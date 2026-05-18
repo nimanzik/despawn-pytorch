@@ -1,3 +1,3 @@
-DeSpaWN-PyTorch
+# DeSpaWN-PyTorch
 
-Denoising Sparse Wavelet Network (DeSpaWN) – PyTorch implementation
+***Denoising Sparse Wavelet Network (DeSpaWN) – PyTorch implementation***
