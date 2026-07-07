@@ -3,14 +3,14 @@
 Title: Fully Learnable Deep Wavelet Transform for Unsupervised Monitoring of High-Frequency Time Series
 ------          (DeSpaWN)
 
-Description: 
+Description:
 --------------
 Function to generate a DeSpaWN TF model.
 Please cite the corresponding paper:
           Michau, G., Frusque, G., & Fink, O. (2022).
           Fully learnable deep wavelet transform for unsupervised monitoring of high-frequency time series.
           Proceedings of the National Academy of Sciences, 119(8).
-          
+
 Version: 1.0
 --------
 
@@ -59,13 +59,13 @@ def createDeSpaWN(inputSize=None, kernelInit=8, kernTrainable=True, level=1, los
     inputSize : INT, optional
         Length of the time series. Network is more efficient if set.
         Can be set to None to allow various input size time series.
-        The default is None. 
+        The default is None.
     kernelInit : numpy array or LIST or INT, optional
         Initialisation of the kernel. If INT, random normal initialisation of size kernelInit.
         If array or LIST, then kernelInit is the kernel.
         The default is 8.
     kernTrainable : BOOL, optional
-        Whether the kernels are trainable. Set to FALSE to compare to traditional wavelet decomposition. 
+        Whether the kernels are trainable. Set to FALSE to compare to traditional wavelet decomposition.
         The default is True.
     level : INT, optional
         Number of layers in the network.
@@ -78,7 +78,7 @@ def createDeSpaWN(inputSize=None, kernelInit=8, kernTrainable=True, level=1, los
         The default is 'l1'.
     kernelsConstraint : STRING, optional
         Specify which version of DeSpaWN to implement.
-        Refers to the paper (https://arxiv.org/pdf/2105.00899.pdf) 
+        Refers to the paper (https://arxiv.org/pdf/2105.00899.pdf)
         [Section 4.4 Ablation Study] for more details.
         The default is 'CQF'.
     initHT : FLOAT, optional
@@ -97,7 +97,7 @@ def createDeSpaWN(inputSize=None, kernelInit=8, kernTrainable=True, level=1, los
     model1 and model2 share their architecture, weigths and parameters.
     Training one of the two changes both models
     """
-    
+
     input_shape = (inputSize,1,1)
     inputSig = keras.layers.Input(shape=input_shape, name='input_Raw')
     g = inputSig
@@ -137,7 +137,7 @@ def createDeSpaWN(inputSize=None, kernelInit=8, kernTrainable=True, level=1, los
         h = impLay.HighPassTrans()([hl[lev],kernelsHT[lev],inSizel[lev]])
         g = impLay.LowPassTrans()([g,kernelsGT[lev],inSizel[lev]])
         g = keras.layers.Add()([g,h])
-    
+
     # Compute specified loss on coefficients
     if not lossCoeff:
         vLossCoeff = tf.zeros((1,1,1,1))
