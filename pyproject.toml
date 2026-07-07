@@ -3,7 +3,7 @@ name = "despawn-pytorch"
 version = "0.1.0"
 description = "Denoising Sparse Wavelet Network (DeSpaWN) in PyTorch"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 authors = [
     { name = "Nima Nooshiri", email = "nima.nooshiri@gmail.com" }
 ]
@@ -12,6 +12,58 @@ maintainers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+torch-cpu = ["torch>=2.12.1"]
+torch-cu126 = ["torch>=2.12.1"]
+torch-cu130 = ["torch>=2.12.1"]
+torch-cu132 = ["torch>=2.12.1"]
+
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "einops>=0.8.2",
+    "ipython>=9.15.0",
+    "numpy>=2.4.4",
+    "pytest>=9.1.1",
+]
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "torch-cpu" },
+    { extra = "torch-cu126" },
+    { extra = "torch-cu130" },
+    { extra = "torch-cu132" },
+  ],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "torch-cpu" },
+    { index = "pytorch-cu126", extra = "torch-cu126" },
+    { index = "pytorch-cu130", extra = "torch-cu130" },
+    { index = "pytorch-cu132", extra = "torch-cu132" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
