@@ -2,7 +2,7 @@ lint.select = ["B", "E", "F", "I", "Q", "D", "W505", "TCH", "RUF022"]
 lint.ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
 line-length = 88
 
-exclude = ["legacy", "scripts"]
+exclude = ["tests/legacy"]
 
 [format]
 quote-style = "double"

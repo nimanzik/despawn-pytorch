@@ -2,4 +2,4 @@
 unresolved-attribute = "ignore"
 
 [src]
-exclude = ["legacy", "scripts"]
+exclude = ["tests/legacy"]
