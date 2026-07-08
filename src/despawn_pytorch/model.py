@@ -14,7 +14,7 @@ from .layers import (
 )
 
 
-class _KernelsConstraint(StrEnum):
+class KernelsConstraint(StrEnum):
     CQF = "cqf"
     PER_LAYER = "per_layer"
     PER_FILTER = "per_filter"
@@ -46,7 +46,7 @@ class DeSpaWN(nn.Module):
         kern_trainable=True,
         level=1,
         loss_coeff="l1",
-        kernels_constraint=_KernelsConstraint.CQF,
+        kernels_constraint="cqf",
         init_ht=1.0,
         train_ht=True,
     ):
@@ -70,9 +70,9 @@ class DeSpaWN(nn.Module):
         # registers and optimises them correctly.
 
         try:
-            kernels_constraint = _KernelsConstraint(kernels_constraint)
+            kernels_constraint = KernelsConstraint(kernels_constraint)
         except ValueError as e:
-            valid = ", ".join(constraint.value for constraint in _KernelsConstraint)
+            valid = ", ".join(constraint.value for constraint in KernelsConstraint)
             raise ValueError(
                 f"kernels_constraint must be one of {valid}, got {kernels_constraint}"
             ) from e
@@ -81,7 +81,7 @@ class DeSpaWN(nn.Module):
             """Create a list of `n` learnable convolution kernel parameters."""
             return [_create_kernel(kernel_init, kern_trainable) for _ in range(n)]
 
-        if kernels_constraint == _KernelsConstraint.CQF:
+        if kernels_constraint == KernelsConstraint.CQF:
             # One kernel parameter shared by every level and every filter bank
             kern = _create_kernel(kernel_init, kern_trainable)
             self._kG = [kern] * level
@@ -90,7 +90,7 @@ class DeSpaWN(nn.Module):
             self._kHT = [kern] * level
             self.kern_store = nn.ParameterList([kern])
 
-        elif kernels_constraint == _KernelsConstraint.PER_LAYER:
+        elif kernels_constraint == KernelsConstraint.PER_LAYER:
             # One kernel per level, shared across all four filter banks
             kerns = get_kernel_list(level)
             self._kG = kerns
@@ -99,7 +99,7 @@ class DeSpaWN(nn.Module):
             self._kHT = kerns
             self.kern_store = nn.ParameterList(kerns)
 
-        elif kernels_constraint == _KernelsConstraint.PER_FILTER:
+        elif kernels_constraint == KernelsConstraint.PER_FILTER:
             # Separate G and H kernels per level; synthesis tied to analysis
             kerns_G = get_kernel_list(level)
             kerns_H = get_kernel_list(level)
@@ -109,7 +109,7 @@ class DeSpaWN(nn.Module):
             self._kHT = kerns_H  # synthesis H  = analysis H
             self.kern_store = nn.ParameterList(kerns_G + kerns_H)
 
-        elif kernels_constraint == _KernelsConstraint.FREE:
+        elif kernels_constraint == KernelsConstraint.FREE:
             # All four filter banks are fully independent per level
             kerns_G = get_kernel_list(level)
             kerns_H = get_kernel_list(level)
