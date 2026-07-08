@@ -62,17 +62,23 @@ class Despawn(nn.Module):
 
     def __init__(
         self,
+        *,
         kernel_init=8,
-        kern_trainable=True,
-        level=1,
-        loss_coeff="l1",
+        kernel_learnable=True,
         kernels_constraint="cqf",
-        init_ht=1.0,
-        train_ht=True,
+        n_levels=1,
+        loss_coeff="l1",
+        threshold_init=1.0,
+        threshold_learnable=True,
     ):
         super().__init__()
 
-        self.level = level
+        if not isinstance(n_levels, int) or n_levels < 1:
+            raise ValueError(f"level must be a positive integer, got {n_levels}.")
+        self.n_levels = n_levels
+
+        if loss_coeff not in {"l1", None}:
+            raise ValueError(f"loss_coeff must be 'l1' or None, got {loss_coeff}.")
         self.loss_coeff = loss_coeff
 
         # ------------------------------------------------------------------
@@ -99,20 +105,20 @@ class Despawn(nn.Module):
 
         def get_kernel_list(n: int) -> list[nn.Parameter]:
             """Create a list of `n` learnable convolution kernel parameters."""
-            return [_create_kernel(kernel_init, kern_trainable) for _ in range(n)]
+            return [_create_kernel(kernel_init, kernel_learnable) for _ in range(n)]
 
         if kernels_constraint == KernelsConstraint.CQF:
             # One kernel parameter shared by every level and every filter bank
-            kern = _create_kernel(kernel_init, kern_trainable)
-            self._kG = [kern] * level
-            self._kH = [kern] * level
-            self._kGT = [kern] * level
-            self._kHT = [kern] * level
+            kern = _create_kernel(kernel_init, kernel_learnable)
+            self._kG = [kern] * n_levels
+            self._kH = [kern] * n_levels
+            self._kGT = [kern] * n_levels
+            self._kHT = [kern] * n_levels
             self.kern_store = nn.ParameterList([kern])
 
         elif kernels_constraint == KernelsConstraint.PER_LAYER:
             # One kernel per level, shared across all four filter banks
-            kerns = get_kernel_list(level)
+            kerns = get_kernel_list(n_levels)
             self._kG = kerns
             self._kH = kerns
             self._kGT = kerns
@@ -121,8 +127,8 @@ class Despawn(nn.Module):
 
         elif kernels_constraint == KernelsConstraint.PER_FILTER:
             # Separate G and H kernels per level; synthesis tied to analysis
-            kerns_G = get_kernel_list(level)
-            kerns_H = get_kernel_list(level)
+            kerns_G = get_kernel_list(n_levels)
+            kerns_H = get_kernel_list(n_levels)
             self._kG = kerns_G
             self._kH = kerns_H
             self._kGT = kerns_G  # synthesis G  = analysis G
@@ -131,10 +137,10 @@ class Despawn(nn.Module):
 
         elif kernels_constraint == KernelsConstraint.FREE:
             # All four filter banks are fully independent per level
-            kerns_G = get_kernel_list(level)
-            kerns_H = get_kernel_list(level)
-            kerns_GT = get_kernel_list(level)
-            kerns_HT = get_kernel_list(level)
+            kerns_G = get_kernel_list(n_levels)
+            kerns_H = get_kernel_list(n_levels)
+            kerns_GT = get_kernel_list(n_levels)
+            kerns_HT = get_kernel_list(n_levels)
             self._kG = kerns_G
             self._kH = kerns_H
             self._kGT = kerns_GT
@@ -156,11 +162,15 @@ class Despawn(nn.Module):
         # ------------------------------------------------------------------
         self.ht_details = nn.ModuleList(
             [
-                HardThresholdAssym(init_value=init_ht, learnable=train_ht)
-                for _ in range(level)
+                HardThresholdAssym(
+                    init_value=threshold_init, learnable=threshold_learnable
+                )
+                for _ in range(n_levels)
             ]
         )
-        self.ht_approx = HardThresholdAssym(init_value=init_ht, learnable=train_ht)
+        self.ht_approx = HardThresholdAssym(
+            init_value=threshold_init, learnable=threshold_learnable
+        )
 
     # ----------------------------------------------------------------------
 
@@ -219,7 +229,7 @@ class Despawn(nn.Module):
         # ------------------------------------------------------------------
         # Decomposition
         # ------------------------------------------------------------------
-        for lev in range(self.level):
+        for lev in range(self.n_levels):
             inSizel.append(g.shape)  # save shape before downsampling
 
             kG = self._kG[lev]  # low-pass  analysis kernel tensor
@@ -239,7 +249,7 @@ class Despawn(nn.Module):
         # ------------------------------------------------------------------
         # Reconstruction
         # ------------------------------------------------------------------
-        for lev in range(self.level - 1, -1, -1):
+        for lev in range(self.n_levels - 1, -1, -1):
             kGT = self._kGT[lev]
             kHT = self._kHT[lev]
 
@@ -255,7 +265,7 @@ class Despawn(nn.Module):
 
         elif self.loss_coeff == "l1":
             # Concatenate all coefficients along the time axis (dim=2), then
-            # compute mean absolute value — mirrors TF's:
+            # compute mean absolute value:
             #   reduce_mean(abs(concat([gint] + hl, axis=1)), axis=1)
             # where axis=1 in NHWC == dim=2 in NCHW.
             all_coeffs = torch.cat([gint] + hl, dim=2)

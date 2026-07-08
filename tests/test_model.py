@@ -79,9 +79,9 @@ class TestDespawn:
     ) -> None:
         model = Despawn(
             kernel_init=[0.2, -0.5, 0.7, 0.1],
-            level=3,
             kernels_constraint=constraint,
-            init_ht=0.25,
+            n_levels=3,
+            threshold_init=0.25,
         )
 
         assert len(model.kern_store) == expected_kernel_params
@@ -144,12 +144,12 @@ class TestDespawnLegacyParity:
         )
         torch_model = Despawn(
             kernel_init=kernel,
-            kern_trainable=True,
-            level=3,
-            loss_coeff="l1",
+            kernel_learnable=True,
             kernels_constraint=torch_constraint,
-            init_ht=0.25,
-            train_ht=True,
+            n_levels=3,
+            loss_coeff="l1",
+            threshold_init=0.25,
+            threshold_learnable=True,
         )
 
         tf_recon, tf_coeff_loss = tf_model(rearrange(model_input, "N C H W -> N H W C"))
@@ -195,12 +195,12 @@ class TestDespawnLegacyParity:
         )
         torch_model = Despawn(
             kernel_init=kernel,
-            kern_trainable=True,
-            level=3,
-            loss_coeff="l1",
+            kernel_learnable=True,
             kernels_constraint=torch_constraint,
-            init_ht=0.25,
-            train_ht=True,
+            n_levels=3,
+            loss_coeff="l1",
+            threshold_init=0.25,
+            threshold_learnable=True,
         )
 
         tf_recon, tf_approx, tf_details = tf_coeff_model(
