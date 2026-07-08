@@ -13,6 +13,8 @@ from .layers import (
     LowPassWave,
 )
 
+__all__ = ["Despawn"]
+
 
 class KernelsConstraint(StrEnum):
     CQF = "cqf"
@@ -49,7 +51,7 @@ def _create_kernel(kernel_init=8, learnable=True):
     return nn.Parameter(kernel.reshape(1, 1, -1, 1), requires_grad=learnable)
 
 
-class DeSpaWN(nn.Module):
+class Despawn(nn.Module):
     """Deep Sparse Wavelet Network (DeSpaWN).
 
     An encoder-decoder network whose analysis and synthesis filters are

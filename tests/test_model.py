@@ -9,7 +9,7 @@ import tensorflow as tf  # ty: ignore[unresolved-import]
 import torch
 from einops import rearrange
 
-from despawn_pytorch.model import DeSpaWN
+from despawn_pytorch.model import Despawn
 
 from .legacy import despawnLayers as legacy_layers
 
@@ -69,7 +69,7 @@ def model_input() -> np.ndarray:
     return rng.normal(size=(2, 1, 15, 1)).astype("float32")
 
 
-class TestDeSpaWN:
+class TestDespawn:
     @pytest.mark.parametrize(
         ("constraint", "expected_kernel_params"),
         [("cqf", 1), ("per_layer", 3), ("per_filter", 6), ("free", 12)],
@@ -77,7 +77,7 @@ class TestDeSpaWN:
     def test_constraint_parameter_sharing(
         self, constraint: str, expected_kernel_params: int
     ) -> None:
-        model = DeSpaWN(
+        model = Despawn(
             kernel_init=[0.2, -0.5, 0.7, 0.1],
             level=3,
             kernels_constraint=constraint,
@@ -103,21 +103,21 @@ class TestDeSpaWN:
     @pytest.mark.parametrize("constraint", ["CQF", "PerLayer", "PerFilter", "Free"])
     def test_rejects_legacy_constraint_names(self, constraint: str) -> None:
         with pytest.raises(ValueError, match="kernels_constraint"):
-            DeSpaWN(kernels_constraint=constraint)
+            Despawn(kernels_constraint=constraint)
 
     def test_rejects_unknown_constraint(self) -> None:
         with pytest.raises(ValueError, match="kernels_constraint"):
-            DeSpaWN(kernels_constraint="unknown")
+            Despawn(kernels_constraint="unknown")
 
     def test_loss_coeff_none_returns_zero(self) -> None:
-        model = DeSpaWN(loss_coeff=None)
+        model = Despawn(loss_coeff=None)
         _, coeff_loss = model(torch.randn(2, 1, 8, 1))
 
         assert coeff_loss.shape == (1, 1, 1, 1)
         assert torch.equal(coeff_loss, torch.zeros_like(coeff_loss))
 
 
-class TestDeSpaWNLegacyParity:
+class TestDespawnLegacyParity:
     @pytest.mark.parametrize(
         ("legacy_constraint", "torch_constraint"), LEGACY_CONSTRAINT_MAP.items()
     )
@@ -142,7 +142,7 @@ class TestDeSpaWNLegacyParity:
             initHT=0.25,
             trainHT=True,
         )
-        torch_model = DeSpaWN(
+        torch_model = Despawn(
             kernel_init=kernel,
             kern_trainable=True,
             level=3,
@@ -193,7 +193,7 @@ class TestDeSpaWNLegacyParity:
             initHT=0.25,
             trainHT=True,
         )
-        torch_model = DeSpaWN(
+        torch_model = Despawn(
             kernel_init=kernel,
             kern_trainable=True,
             level=3,
