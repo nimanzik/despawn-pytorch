@@ -21,15 +21,15 @@ if TYPE_CHECKING:
 __all__ = ["Despawn"]
 
 
+class SupportsArray(Protocol):
+    def __array__(self) -> Any: ...
+
+
 class KernelsConstraint(StrEnum):
     CQF = "cqf"
     PER_LAYER = "per_layer"
     PER_FILTER = "per_filter"
     FREE = "free"
-
-
-class SupportsArray(Protocol):
-    def __array__(self) -> Any: ...
 
 
 def _create_kernel(
@@ -93,10 +93,8 @@ class Despawn(nn.Module):
             raise ValueError(f"loss_coeff must be 'l1' or None, got {loss_coeff}.")
         self.loss_coeff = loss_coeff
 
-        # ------------------------------------------------------------------
-        # Kernel parameters
-        # ------------------------------------------------------------------
-        # Four kernel lists of length `level` are maintained:
+        # ----- Kernel parameters ------
+        # Four kernel lists of length `n_levels` are maintained:
         #   _kG  — low-pass  analysis  (forward, decomposition)
         #   _kH  — high-pass analysis  (derived from _kG via QMF)
         #   _kGT — low-pass  synthesis (reconstruction)
@@ -159,19 +157,15 @@ class Despawn(nn.Module):
             self._kHT = kerns_HT
             self.kern_store = nn.ParameterList(kerns_G + kerns_H + kerns_GT + kerns_HT)
 
-        # ------------------------------------------------------------------
-        # Stateless filter layers  (no parameters; one instance reused)
-        # ------------------------------------------------------------------
+        # ----- Stateless filters (no parameters; one instance reused) -----
         self.lp_wave = LowPassWave()
         self.hp_wave = HighPassWave()
         self.lp_trans = LowPassTrans()
         self.hp_trans = HighPassTrans()
 
-        # ------------------------------------------------------------------
-        # Hard-thresholding layers
+        # ----- Hard-thresholding layers -----
         # One per decomposition level (for detail coefficients) + one for
         # the final approximation — exactly as in the TF code.
-        # ------------------------------------------------------------------
         self.ht_details = nn.ModuleList(
             [
                 HardThresholdAssym(
@@ -183,8 +177,6 @@ class Despawn(nn.Module):
         self.ht_approx = HardThresholdAssym(
             init_value=threshold_init, learnable=threshold_learnable
         )
-
-    # ----------------------------------------------------------------------
 
     @overload
     def forward(
@@ -238,13 +230,11 @@ class Despawn(nn.Module):
         hl = []  # detail coefficients, appended finest → coarsest order
         inSizel = []  # pre-downsampling shapes, needed for reconstruction
 
-        # ------------------------------------------------------------------
-        # Decomposition
-        # ------------------------------------------------------------------
+        # ----- Decomposition -----
         for lev in range(self.n_levels):
             inSizel.append(g.shape)  # save shape before downsampling
 
-            kG = self._kG[lev]  # low-pass  analysis kernel tensor
+            kG = self._kG[lev]  # low-pass analysis kernel tensor
             kH = self._kH[lev]  # high-pass analysis kernel tensor
 
             # Detail coefficients: high-pass filtered + hard-thresholded
@@ -258,9 +248,7 @@ class Despawn(nn.Module):
         g = self.ht_approx(g)
         gint = g  # save for coefficient output / L1 loss
 
-        # ------------------------------------------------------------------
-        # Reconstruction
-        # ------------------------------------------------------------------
+        # ----- Reconstruction -----
         for lev in range(self.n_levels - 1, -1, -1):
             kGT = self._kGT[lev]
             kHT = self._kHT[lev]
@@ -269,26 +257,19 @@ class Despawn(nn.Module):
             g = self.lp_trans(g, kGT, inSizel[lev])
             g = g + h
 
-        # ------------------------------------------------------------------
-        # Sparsity loss term
-        # ------------------------------------------------------------------
+        # ----- Sparsity loss term -----
         if not self.loss_coeff:
             v_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
 
         elif self.loss_coeff == "l1":
             # Concatenate all coefficients along the time axis (dim=2), then
             # compute mean absolute value:
-            #   reduce_mean(abs(concat([gint] + hl, axis=1)), axis=1)
+            #   reduce_mean(abs(concat([gint] + hl, axis=1)), axis=1),
             # where axis=1 in NHWC == dim=2 in NCHW.
             all_coeffs = torch.cat([gint] + hl, dim=2)
             v_loss = torch.mean(torch.abs(all_coeffs), dim=2, keepdim=True)
 
-        else:
-            raise ValueError(
-                f"Unknown loss_coeff '{self.loss_coeff}'. Choose 'l1' or None."
-            )
-
         if return_coeffs:
-            # detail list coarsest → finest (matches TF model2)
+            # detail list coarsest -> finest (matches legacy model2)
             return (g, gint, hl[::-1])
         return g, v_loss
