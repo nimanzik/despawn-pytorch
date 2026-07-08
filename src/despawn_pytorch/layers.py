@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+import torch.nn as nn
 
 from .ops import apply_conv2d, apply_conv_transpose2d
 
