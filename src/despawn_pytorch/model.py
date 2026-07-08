@@ -94,17 +94,6 @@ class Despawn(nn.Module):
         self.loss_coeff = loss_coeff
 
         # ----- Kernel parameters ------
-        # Four kernel lists of length `n_levels` are maintained:
-        #   _kG  — low-pass  analysis  (forward, decomposition)
-        #   _kH  — high-pass analysis  (derived from _kG via QMF)
-        #   _kGT — low-pass  synthesis (reconstruction)
-        #   _kHT — high-pass synthesis (derived from _kGT via QMF)
-        #
-        # Depending on kernels_constraint, lists may share the same direct
-        # nn.Parameter objects, exactly mirroring the TF code.
-        # All *unique* parameters are stored in self.kern_store so PyTorch
-        # registers and optimises them correctly.
-
         try:
             kernels_constraint = KernelsConstraint(kernels_constraint)
         except ValueError as e:
@@ -118,7 +107,7 @@ class Despawn(nn.Module):
             return [_create_kernel(kernel_init, kernel_learnable) for _ in range(n)]
 
         if kernels_constraint == KernelsConstraint.CQF:
-            # One kernel parameter shared by every level and every filter bank
+            # Share one kernel across all levels and filter banks.
             kern = _create_kernel(kernel_init, kernel_learnable)
             self._kG = [kern] * n_levels
             self._kH = [kern] * n_levels
@@ -127,7 +116,7 @@ class Despawn(nn.Module):
             self.kern_store = nn.ParameterList([kern])
 
         elif kernels_constraint == KernelsConstraint.PER_LAYER:
-            # One kernel per level, shared across all four filter banks
+            # Share one kernel across all filter banks at each level.
             kerns = get_kernel_list(n_levels)
             self._kG = kerns
             self._kH = kerns
@@ -136,7 +125,7 @@ class Despawn(nn.Module):
             self.kern_store = nn.ParameterList(kerns)
 
         elif kernels_constraint == KernelsConstraint.PER_FILTER:
-            # Separate G and H kernels per level; synthesis tied to analysis
+            # Use separate analysis kernels, with synthesis tied to analysis.
             kerns_G = get_kernel_list(n_levels)
             kerns_H = get_kernel_list(n_levels)
             self._kG = kerns_G
@@ -146,7 +135,7 @@ class Despawn(nn.Module):
             self.kern_store = nn.ParameterList(kerns_G + kerns_H)
 
         elif kernels_constraint == KernelsConstraint.FREE:
-            # All four filter banks are fully independent per level
+            # Use independent kernels for every filter bank at every level.
             kerns_G = get_kernel_list(n_levels)
             kerns_H = get_kernel_list(n_levels)
             kerns_GT = get_kernel_list(n_levels)
@@ -157,15 +146,14 @@ class Despawn(nn.Module):
             self._kHT = kerns_HT
             self.kern_store = nn.ParameterList(kerns_G + kerns_H + kerns_GT + kerns_HT)
 
-        # ----- Stateless filters (no parameters; one instance reused) -----
+        # Stateless filters are reused across levels.
         self.lp_wave = LowPassWave()
         self.hp_wave = HighPassWave()
         self.lp_trans = LowPassTrans()
         self.hp_trans = HighPassTrans()
 
-        # ----- Hard-thresholding layers -----
-        # One per decomposition level (for detail coefficients) + one for
-        # the final approximation — exactly as in the TF code.
+        # Threshold detail coefficients at each level and the final
+        # approximation.
         self.ht_details = nn.ModuleList(
             [
                 HardThresholdAssym(
@@ -196,39 +184,11 @@ class Despawn(nn.Module):
     def forward(
         self, x: Tensor, return_coeffs: bool = False
     ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, list[Tensor]]:
-        """
-        Forward pass: decomposition → hard-thresholding → reconstruction.
-
-        Parameters
-        ----------
-        x : torch.Tensor, shape (N, 1, T, 1)
-            Input signal in PyTorch NCHW layout.
-        return_coeffs : bool, optional
-            False (default) — returns (reconstructed, loss_term).
-                Equivalent to TF model1.  Use for training.
-            True  — returns (reconstructed, approx_coeffs, detail_list).
-                Equivalent to TF model2.  Use for inspection / plotting.
-
-        Returns
-        -------
-        g : torch.Tensor, shape (N, 1, T, 1)
-            Reconstructed signal.
-        When return_coeffs=False:
-            v_loss : torch.Tensor, shape (N, 1, 1, 1)
-                Sparsity loss term (mean |coeff|) or zeros if loss_coeff=None.
-                Scaled and added to the reconstruction loss in the training
-                loop.
-        When return_coeffs=True:
-            gint     : torch.Tensor — approximation coefficients (deepest
-            level).
-            hl_rev   : list of torch.Tensor — detail coefficients ordered
-                       coarsest-to-finest, matching TF model2's hl[::-1]
-                       output.
-        """
+        """Run decomposition, thresholding, and reconstruction."""
         g = x
 
-        hl = []  # detail coefficients, appended finest → coarsest order
-        inSizel = []  # pre-downsampling shapes, needed for reconstruction
+        hl = []  # detail coefficients, finest to coarsest
+        inSizel = []  # shapes before downsampling, needed for reconstruction
 
         # ----- Decomposition -----
         for lev in range(self.n_levels):
@@ -262,14 +222,10 @@ class Despawn(nn.Module):
             v_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
 
         elif self.loss_coeff == "l1":
-            # Concatenate all coefficients along the time axis (dim=2), then
-            # compute mean absolute value:
-            #   reduce_mean(abs(concat([gint] + hl, axis=1)), axis=1),
-            # where axis=1 in NHWC == dim=2 in NCHW.
+            # Compute the mean absolute value across all coefficients.
             all_coeffs = torch.cat([gint] + hl, dim=2)
             v_loss = torch.mean(torch.abs(all_coeffs), dim=2, keepdim=True)
 
         if return_coeffs:
-            # detail list coarsest -> finest (matches legacy model2)
             return (g, gint, hl[::-1])
         return g, v_loss
