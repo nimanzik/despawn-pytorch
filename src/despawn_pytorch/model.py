@@ -113,7 +113,7 @@ class Despawn(nn.Module):
             self._kH = [kern] * n_levels
             self._kGT = [kern] * n_levels
             self._kHT = [kern] * n_levels
-            self.kern_store = nn.ParameterList([kern])
+            self.kernel_store = nn.ParameterList([kern])
 
         elif kernels_constraint == KernelsConstraint.PER_LAYER:
             # Share one kernel across all filter banks at each level.
@@ -122,7 +122,7 @@ class Despawn(nn.Module):
             self._kH = kerns
             self._kGT = kerns
             self._kHT = kerns
-            self.kern_store = nn.ParameterList(kerns)
+            self.kernel_store = nn.ParameterList(kerns)
 
         elif kernels_constraint == KernelsConstraint.PER_FILTER:
             # Use separate analysis kernels, with synthesis tied to analysis.
@@ -132,7 +132,7 @@ class Despawn(nn.Module):
             self._kH = kerns_H
             self._kGT = kerns_G  # synthesis G  = analysis G
             self._kHT = kerns_H  # synthesis H  = analysis H
-            self.kern_store = nn.ParameterList(kerns_G + kerns_H)
+            self.kernel_store = nn.ParameterList(kerns_G + kerns_H)
 
         elif kernels_constraint == KernelsConstraint.FREE:
             # Use independent kernels for every filter bank at every level.
@@ -144,7 +144,9 @@ class Despawn(nn.Module):
             self._kH = kerns_H
             self._kGT = kerns_GT
             self._kHT = kerns_HT
-            self.kern_store = nn.ParameterList(kerns_G + kerns_H + kerns_GT + kerns_HT)
+            self.kernel_store = nn.ParameterList(
+                kerns_G + kerns_H + kerns_GT + kerns_HT
+            )
 
         # Stateless filters are reused across levels.
         self.lp_wave = LowPassWave()
