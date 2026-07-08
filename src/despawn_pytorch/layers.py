@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 from .ops import apply_conv2d, apply_conv_transpose2d
 
@@ -19,7 +22,7 @@ class LowPassWave(nn.Module):
     input signal.
     """
 
-    def forward(self, signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
+    def forward(self, signal: Tensor, kernel: Tensor) -> Tensor:
         return apply_conv2d(signal, kernel, strides=(2, 1))
 
 
@@ -33,7 +36,7 @@ class HighPassWave(nn.Module):
     relationship.
     """
 
-    def forward(self, signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
+    def forward(self, signal: Tensor, kernel: Tensor) -> Tensor:
         idxs = torch.arange(kernel.shape[2], device=kernel.device, dtype=kernel.dtype)
         signs = ((-1) ** idxs).reshape(1, 1, -1, 1)
         hp_kernel = torch.flip(kernel, dims=[2]) * signs
@@ -53,10 +56,10 @@ class LowPassTrans(nn.Module):
 
     def forward(
         self,
-        signal: torch.Tensor,
-        kernel: torch.Tensor,
+        signal: Tensor,
+        kernel: Tensor,
         output_shape: tuple[int, int, int, int] | list[int] | torch.Size,
-    ) -> torch.Tensor:
+    ) -> Tensor:
         return apply_conv_transpose2d(signal, kernel, output_shape, strides=(2, 1))
 
 
@@ -73,10 +76,10 @@ class HighPassTrans(nn.Module):
 
     def forward(
         self,
-        signal: torch.Tensor,
-        kernel: torch.Tensor,
+        signal: Tensor,
+        kernel: Tensor,
         output_shape: tuple[int, int, int, int] | list[int] | torch.Size,
-    ) -> torch.Tensor:
+    ) -> Tensor:
         idxs = torch.arange(kernel.shape[2], device=kernel.device, dtype=kernel.dtype)
         signs = ((-1) ** (idxs + 1)).reshape(1, 1, -1, 1)
         hp_kernel = torch.flip(kernel, dims=[2]) * signs
@@ -106,7 +109,7 @@ class HardThresholdAssym(nn.Module):
         )
         self.alpha = alpha
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         mask = torch.sigmoid(
             self.alpha * (x - self.positive_threshold)
         ) + torch.sigmoid(-self.alpha * (x + self.negative_threshold))

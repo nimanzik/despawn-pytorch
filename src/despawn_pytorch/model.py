@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from enum import StrEnum
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 import torch
 import torch.nn as nn
@@ -13,6 +15,9 @@ from .layers import (
     LowPassWave,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 __all__ = ["Despawn"]
 
 
@@ -23,7 +28,13 @@ class KernelsConstraint(StrEnum):
     FREE = "free"
 
 
-def _create_kernel(kernel_init=8, learnable=True):
+class SupportsArray(Protocol):
+    def __array__(self) -> Any: ...
+
+
+def _create_kernel(
+    kernel_init: int | Sequence[float] | SupportsArray = 8, learnable: bool = True
+) -> nn.Parameter:
     """Create a convolution kernel parameter.
 
     Parameters
@@ -63,13 +74,14 @@ class Despawn(nn.Module):
     def __init__(
         self,
         *,
-        kernel_init=8,
-        kernel_learnable=True,
-        kernels_constraint="cqf",
-        n_levels=1,
-        loss_coeff="l1",
-        threshold_init=1.0,
-        threshold_learnable=True,
+        kernel_init: int | Sequence[float] | SupportsArray = 8,
+        kernel_learnable: bool = True,
+        kernels_constraint: KernelsConstraint
+        | Literal["cqf", "per_layer", "per_filter", "free"] = "cqf",
+        n_levels: int = 1,
+        loss_coeff: Literal["l1", None] = "l1",
+        threshold_init: float = 1.0,
+        threshold_learnable: bool = True,
     ):
         super().__init__()
 

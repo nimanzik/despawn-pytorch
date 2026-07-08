@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import sys
 from collections.abc import Callable
 from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pytest
@@ -18,15 +20,21 @@ legacy_lib.despawnLayers = legacy_layers
 sys.modules.setdefault("lib", legacy_lib)
 from .legacy import despawnCreate as legacy_create  # noqa: E402
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+
+type ActiveConstraintLike = Literal["cqf", "per_layer", "per_filter", "free"]
+type LegacyConstraintLike = Literal["CQF", "PerLayer", "PerFilter", "Free"]
+type LegacyCreateDeSpaWN = Callable[..., tuple[Any, Any]]
+
+
 LEGACY_CONSTRAINT_MAP = {
     "CQF": "cqf",
     "PerLayer": "per_layer",
     "PerFilter": "per_filter",
     "Free": "free",
 }
-
-
-type CreateDeSpaWN = Callable[..., tuple[Any, Any]]
 
 
 class _LegacyCreateMathShim:
@@ -58,13 +66,13 @@ class _LegacyCreateTFShim:
 
 
 @pytest.fixture
-def patched_legacy_create(monkeypatch: pytest.MonkeyPatch) -> CreateDeSpaWN:
+def patched_legacy_create(monkeypatch: pytest.MonkeyPatch) -> LegacyCreateDeSpaWN:
     monkeypatch.setattr(legacy_create, "tf", _LegacyCreateTFShim)
     return legacy_create.createDeSpaWN
 
 
 @pytest.fixture
-def model_input() -> np.ndarray:
+def model_input() -> NDArray:
     rng = np.random.default_rng(731)
     return rng.normal(size=(2, 1, 15, 1)).astype("float32")
 
@@ -74,8 +82,8 @@ class TestDespawn:
         ("constraint", "expected_kernel_params"),
         [("cqf", 1), ("per_layer", 3), ("per_filter", 6), ("free", 12)],
     )
-    def test_constraint_parameter_sharing(
-        self, constraint: str, expected_kernel_params: int
+    def test_kernel_constraint_parameter_sharing(
+        self, constraint: ActiveConstraintLike, expected_kernel_params: int
     ) -> None:
         model = Despawn(
             kernel_init=[0.2, -0.5, 0.7, 0.1],
@@ -101,13 +109,15 @@ class TestDespawn:
         ]
 
     @pytest.mark.parametrize("constraint", ["CQF", "PerLayer", "PerFilter", "Free"])
-    def test_rejects_legacy_constraint_names(self, constraint: str) -> None:
+    def test_rejects_legacy_constraint_names(
+        self, constraint: LegacyConstraintLike
+    ) -> None:
         with pytest.raises(ValueError, match="kernels_constraint"):
-            Despawn(kernels_constraint=constraint)
+            Despawn(kernels_constraint=constraint)  # ty: ignore[invalid-argument-type]
 
     def test_rejects_unknown_constraint(self) -> None:
         with pytest.raises(ValueError, match="kernels_constraint"):
-            Despawn(kernels_constraint="unknown")
+            Despawn(kernels_constraint="unknown")  # ty: ignore[invalid-argument-type]
 
     def test_loss_coeff_none_returns_zero(self) -> None:
         model = Despawn(loss_coeff=None)
@@ -123,10 +133,10 @@ class TestDespawnLegacyParity:
     )
     def test_reconstruction_and_loss_match_legacy(
         self,
-        patched_legacy_create: CreateDeSpaWN,
-        model_input: np.ndarray,
-        legacy_constraint: str,
-        torch_constraint: str,
+        patched_legacy_create: LegacyCreateDeSpaWN,
+        model_input: NDArray,
+        legacy_constraint: LegacyConstraintLike,
+        torch_constraint: ActiveConstraintLike,
     ) -> None:
         # Test model1 in legacy/despawnCreate.py
         tf.keras.backend.clear_session()
@@ -174,10 +184,10 @@ class TestDespawnLegacyParity:
     )
     def test_coefficients_match_legacy(
         self,
-        patched_legacy_create: CreateDeSpaWN,
-        model_input: np.ndarray,
-        legacy_constraint: str,
-        torch_constraint: str,
+        patched_legacy_create: LegacyCreateDeSpaWN,
+        model_input: NDArray,
+        legacy_constraint: LegacyConstraintLike,
+        torch_constraint: ActiveConstraintLike,
     ) -> None:
         # Test model2 in legacy/despawnCreate.py
         tf.keras.backend.clear_session()
@@ -194,7 +204,7 @@ class TestDespawnLegacyParity:
             trainHT=True,
         )
         torch_model = Despawn(
-            kernel_init=kernel,
+            kernel_init=kernel.tolist(),
             kernel_learnable=True,
             kernels_constraint=torch_constraint,
             n_levels=3,
