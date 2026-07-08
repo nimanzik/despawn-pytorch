@@ -1,7 +1,9 @@
 from enum import StrEnum
+from typing import Literal, overload
 
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 from .layers import (
     HardThresholdAssym,
@@ -142,7 +144,24 @@ class DeSpaWN(nn.Module):
 
     # ----------------------------------------------------------------------
 
-    def forward(self, x, return_coeffs=False):
+    @overload
+    def forward(
+        self, x: Tensor, return_coeffs: Literal[False] = False
+    ) -> tuple[Tensor, Tensor]: ...
+
+    @overload
+    def forward(
+        self, x: Tensor, return_coeffs: Literal[True]
+    ) -> tuple[Tensor, Tensor, list[Tensor]]: ...
+
+    @overload
+    def forward(
+        self, x: Tensor, return_coeffs: bool
+    ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, list[Tensor]]: ...
+
+    def forward(
+        self, x: Tensor, return_coeffs: bool = False
+    ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, list[Tensor]]:
         """
         Forward pass: decomposition → hard-thresholding → reconstruction.
 
