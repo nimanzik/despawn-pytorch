@@ -22,7 +22,25 @@ class KernelsConstraint(StrEnum):
 
 
 def _create_kernel(kernel_init=8, learnable=True):
-    """Create a learnable/fixed convolution kernel as a direct Parameter."""
+    """Create a convolution kernel parameter.
+
+    Parameters
+    ----------
+    kernel_init : int or array-like, default=8
+        If this is an integer, it is used as the kernel length. The kernel
+        values are drawn from a normal distribution with mean 0 and standard
+        deviation 0.05. If this is not an integer, it is converted to a tensor
+        and flattened before it is reshaped for convolution.
+    learnable : bool, default=True
+        If True, the returned parameter is updated during training. If False,
+        the returned parameter is fixed.
+
+    Returns
+    -------
+    kernel : torch.nn.Parameter
+        A parameter with shape ``(1, 1, kernel_size, 1)``. This shape is used
+        by the wavelet convolution layers.
+    """
     dtype = torch.get_default_dtype()
     if isinstance(kernel_init, int):
         kernel = torch.empty(kernel_init, dtype=dtype).normal_(mean=0, std=0.05)
