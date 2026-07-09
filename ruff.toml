@@ -6,6 +6,7 @@ exclude = ["tests/legacy"]
 
 [format]
 quote-style = "double"
+skip-magic-trailing-comma = true
 
 [lint.pycodestyle]
 max-doc-length = 79
