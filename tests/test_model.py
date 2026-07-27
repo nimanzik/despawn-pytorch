@@ -92,7 +92,7 @@ class TestDespawn:
             threshold_init=0.25,
         )
 
-        assert len(model.kern_store) == expected_kernel_params
+        assert len(model.kernel_store) == expected_kernel_params
 
         x = torch.randn(2, 1, 15, 1)
         recon, coeff_loss = model(x)
