@@ -24,3 +24,6 @@ multiline-quotes = "double"
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
 runtime-evaluated-decorators = ["pydantic.validate_call", "pydantic.dataclasses.dataclass"]
 quote-annotations = false
+
+[lint.isort]
+split-on-trailing-comma = false

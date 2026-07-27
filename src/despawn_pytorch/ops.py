@@ -130,9 +130,7 @@ def apply_conv_transpose2d(
     crop_right = max(w_in - w_out - crop_left, 0)
 
     transposed = transposed[
-        ...,
-        crop_top : h_in - crop_bottom,
-        crop_left : w_in - crop_right,
+        ..., crop_top : h_in - crop_bottom, crop_left : w_in - crop_right
     ]
 
     pad_bottom = max(h_out - h_in, 0)
