@@ -21,11 +21,11 @@ if TYPE_CHECKING:
 __all__ = ["Despawn"]
 
 
-class SupportsArray(Protocol):
+class _SupportsArray(Protocol):
     def __array__(self) -> Any: ...
 
 
-class KernelsConstraint(StrEnum):
+class _KernelsConstraint(StrEnum):
     CQF = "cqf"
     PER_LAYER = "per_layer"
     PER_FILTER = "per_filter"
@@ -33,7 +33,7 @@ class KernelsConstraint(StrEnum):
 
 
 def _create_kernel(
-    kernel_init: int | Sequence[float] | SupportsArray = 8, learnable: bool = True
+    kernel_init: int | Sequence[float] | _SupportsArray = 8, learnable: bool = True
 ) -> nn.Parameter:
     """Create a convolution kernel parameter.
 
@@ -74,10 +74,9 @@ class Despawn(nn.Module):
     def __init__(
         self,
         *,
-        kernel_init: int | Sequence[float] | SupportsArray = 8,
+        kernel_init: int | Sequence[float] | _SupportsArray = 8,
         kernel_learnable: bool = True,
-        kernels_constraint: KernelsConstraint
-        | Literal["cqf", "per_layer", "per_filter", "free"] = "cqf",
+        kernels_constraint: Literal["cqf", "per_layer", "per_filter", "free"] = "cqf",
         n_levels: int = 1,
         loss_coeff: Literal["l1", None] = "l1",
         threshold_init: float = 1.0,
@@ -95,9 +94,9 @@ class Despawn(nn.Module):
 
         # ----- Kernel parameters ------
         try:
-            kernels_constraint = KernelsConstraint(kernels_constraint)
+            constraint = _KernelsConstraint(kernels_constraint)
         except ValueError as e:
-            valid = ", ".join(constraint.value for constraint in KernelsConstraint)
+            valid = ", ".join(member.value for member in _KernelsConstraint)
             raise ValueError(
                 f"kernels_constraint must be one of {valid}, got {kernels_constraint}"
             ) from e
@@ -106,7 +105,7 @@ class Despawn(nn.Module):
             """Create a list of `n` learnable convolution kernel parameters."""
             return [_create_kernel(kernel_init, kernel_learnable) for _ in range(n)]
 
-        if kernels_constraint == KernelsConstraint.CQF:
+        if constraint == _KernelsConstraint.CQF:
             # Share one kernel across all levels and filter banks.
             kern = _create_kernel(kernel_init, kernel_learnable)
             self._kG = [kern] * n_levels
@@ -115,7 +114,7 @@ class Despawn(nn.Module):
             self._kHT = [kern] * n_levels
             self.kernel_store = nn.ParameterList([kern])
 
-        elif kernels_constraint == KernelsConstraint.PER_LAYER:
+        elif constraint == _KernelsConstraint.PER_LAYER:
             # Share one kernel across all filter banks at each level.
             kerns = get_kernel_list(n_levels)
             self._kG = kerns
@@ -124,7 +123,7 @@ class Despawn(nn.Module):
             self._kHT = kerns
             self.kernel_store = nn.ParameterList(kerns)
 
-        elif kernels_constraint == KernelsConstraint.PER_FILTER:
+        elif constraint == _KernelsConstraint.PER_FILTER:
             # Use separate analysis kernels, with synthesis tied to analysis.
             kerns_G = get_kernel_list(n_levels)
             kerns_H = get_kernel_list(n_levels)
@@ -134,7 +133,7 @@ class Despawn(nn.Module):
             self._kHT = kerns_H  # synthesis H  = analysis H
             self.kernel_store = nn.ParameterList(kerns_G + kerns_H)
 
-        elif kernels_constraint == KernelsConstraint.FREE:
+        elif constraint == _KernelsConstraint.FREE:
             # Use independent kernels for every filter bank at every level.
             kerns_G = get_kernel_list(n_levels)
             kerns_H = get_kernel_list(n_levels)
