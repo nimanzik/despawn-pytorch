@@ -16,4 +16,4 @@ typecheck:
     @uv run ty check src/
 
 test:
-    @uv run --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -v --tb=short tests/
+    @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -v --tb=short tests/
