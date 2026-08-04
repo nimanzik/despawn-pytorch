@@ -10,13 +10,14 @@ coefficient penalty returned by the model.
 ```python
 import torch
 
-from despawn_pytorch import Despawn, DespawnLoss
+from despawn_pytorch import Despawn, DespawnLoss, get_num_levels
 
-model = Despawn(n_levels=3)
+signal = torch.randn(8, 1, 256, 1)
+n_levels = get_num_levels(signal.shape[2])
+model = Despawn(n_levels=n_levels)
 criterion = DespawnLoss(sparsity_weight=1.0)
 optimizer = torch.optim.NAdam(model.parameters(), lr=0.001)
 
-signal = torch.randn(8, 1, 256, 1)
 reconstruction, coefficient_penalty = model(signal)
 loss = criterion(signal, reconstruction, coefficient_penalty)
 

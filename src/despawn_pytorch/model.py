@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from numbers import Integral
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 import torch
@@ -18,7 +19,7 @@ from .layers import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-__all__ = ["Despawn"]
+__all__ = ["Despawn", "get_num_levels"]
 
 
 class _SupportsArray(Protocol):
@@ -60,6 +61,32 @@ def _create_kernel(
     else:
         kernel = torch.as_tensor(kernel_init, dtype=dtype).flatten()
     return nn.Parameter(kernel.reshape(1, 1, -1, 1), requires_grad=learnable)
+
+
+def get_num_levels(signal_length: int) -> int:
+    """Return the number of decomposition levels for a signal length.
+
+    Calculate the result as ``floor(log2(signal_length))``.
+
+    Parameters
+    ----------
+    signal_length : int
+        Number of samples in the signal.
+
+    Returns
+    -------
+    n : int
+        Number of decomposition levels.
+    """
+    if (
+        isinstance(signal_length, bool)
+        or not isinstance(signal_length, Integral)
+        or signal_length < 2
+    ):
+        raise ValueError(
+            f"signal_length must be an integer of at least 2, got {signal_length}."
+        )
+    return int(signal_length).bit_length() - 1
 
 
 class Despawn(nn.Module):
