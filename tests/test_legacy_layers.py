@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 from collections.abc import Callable
 from typing import Any
@@ -16,11 +18,14 @@ from despawn_pytorch.layers import (
     LowPassWave,
 )
 
+pytest.importorskip("tensorflow")
 from .legacy.despawnLayers import HardThresholdAssym as LegacyHardThresholdAssym
 from .legacy.despawnLayers import HighPassTrans as LegacyHighPassTrans
 from .legacy.despawnLayers import HighPassWave as LegacyHighPassWave
 from .legacy.despawnLayers import LowPassTrans as LegacyLowPassTrans
 from .legacy.despawnLayers import LowPassWave as LegacyLowPassWave
+
+pytestmark = pytest.mark.legacy_tf
 
 type TFLayer = Callable[[], Any]
 type TorchLayer = Callable[[], Any]
