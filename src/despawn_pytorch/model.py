@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .layers import (
-    HardThresholdAssym,
+    HardThreshold,
     HighPassTrans,
     HighPassWave,
     LowPassTrans,
@@ -184,13 +184,11 @@ class Despawn(nn.Module):
         # approximation.
         self.ht_details = nn.ModuleList(
             [
-                HardThresholdAssym(
-                    init_value=threshold_init, learnable=threshold_learnable
-                )
+                HardThreshold(init_value=threshold_init, learnable=threshold_learnable)
                 for _ in range(n_levels)
             ]
         )
-        self.ht_approx = HardThresholdAssym(
+        self.ht_approx = HardThreshold(
             init_value=threshold_init, learnable=threshold_learnable
         )
 

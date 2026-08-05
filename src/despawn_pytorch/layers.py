@@ -7,7 +7,7 @@ from torch import Tensor
 from .ops import apply_conv2d, apply_conv_transpose2d
 
 __all__ = [
-    "HardThresholdAssym",
+    "HardThreshold",
     "HighPassTrans",
     "HighPassWave",
     "LowPassTrans",
@@ -86,7 +86,7 @@ class HighPassTrans(nn.Module):
         return apply_conv_transpose2d(signal, hp_kernel, output_shape, strides=(2, 1))
 
 
-class HardThresholdAssym(nn.Module):
+class HardThreshold(nn.Module):
     """Asymmetric hard-thresholding layer.
 
     Approximates an asymmetric hard-thresholding, where the values within the

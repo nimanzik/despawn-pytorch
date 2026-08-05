@@ -11,7 +11,7 @@ from einops import rearrange
 from numpy.typing import NDArray
 
 from despawn_pytorch.layers import (
-    HardThresholdAssym,
+    HardThreshold,
     HighPassTrans,
     HighPassWave,
     LowPassTrans,
@@ -103,7 +103,7 @@ def tf_threshold(signal_nchw: Signal, init: float | int = 1.0) -> Output:
 
 
 def torch_threshold(signal_nchw: Signal, init_value: float | int = 1.0) -> Output:
-    layer = HardThresholdAssym(init_value=init_value)
+    layer = HardThreshold(init_value=init_value)
     return layer(torch.from_numpy(signal_nchw)).detach().numpy()
 
 
@@ -227,7 +227,7 @@ class TestHighPassTrans:
         np.testing.assert_allclose(torch_output, tf_output, rtol=1e-6, atol=1e-6)
 
 
-class TestHardThresholdAssym:
+class TestHardThreshold:
     def test_random_input(self) -> None:
         rng = np.random.default_rng(927)
         signal = rng.normal(size=(2, 1, 9, 3)).astype("float32")
@@ -246,7 +246,7 @@ class TestHardThresholdAssym:
         np.testing.assert_allclose(torch_output, tf_output, rtol=1e-6, atol=1e-6)
 
     def test_train_bias_false_freezes_thresholds(self) -> None:
-        layer = HardThresholdAssym(init_value=0.5, learnable=False)
+        layer = HardThreshold(init_value=0.5, learnable=False)
 
         assert not layer.positive_threshold.requires_grad
         assert not layer.negative_threshold.requires_grad
