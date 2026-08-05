@@ -168,8 +168,8 @@ class TestDespawnLegacyParity:
             rearrange(model_input, "N C H W -> N H W C")
         )
         with torch.no_grad():
-            torch_recon, torch_approx, torch_details = torch_model(
-                torch.from_numpy(model_input), return_coeffs=True
+            torch_recon, torch_approx, torch_details = torch_model.decompose(
+                torch.from_numpy(model_input)
             )
 
         torch_outputs = [torch_recon, torch_approx, *torch_details]

@@ -30,11 +30,12 @@ class TestDespawn:
 
         x = torch.randn(2, 1, 15, 1)
         recon, coeff_loss = model(x)
-        recon2, approx, details = model(x, return_coeffs=True)
+        recon2, approx, details = model.decompose(x)
 
         assert recon.shape == x.shape
         assert coeff_loss.shape == (2, 1, 1, 1)
         assert recon2.shape == x.shape
+        torch.testing.assert_close(recon2, recon)
         assert approx.shape == (2, 1, 2, 1)
         assert [detail.shape for detail in details] == [
             torch.Size([2, 1, 2, 1]),

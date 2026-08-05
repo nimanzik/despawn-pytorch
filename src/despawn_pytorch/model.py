@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from numbers import Integral
-from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import torch
 import torch.nn as nn
@@ -192,25 +192,8 @@ class Despawn(nn.Module):
             init_value=threshold_init, learnable=threshold_learnable
         )
 
-    @overload
-    def forward(
-        self, x: Tensor, return_coeffs: Literal[False] = False
-    ) -> tuple[Tensor, Tensor]: ...
-
-    @overload
-    def forward(
-        self, x: Tensor, return_coeffs: Literal[True]
-    ) -> tuple[Tensor, Tensor, list[Tensor]]: ...
-
-    @overload
-    def forward(
-        self, x: Tensor, return_coeffs: bool
-    ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, list[Tensor]]: ...
-
-    def forward(
-        self, x: Tensor, return_coeffs: bool = False
-    ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, list[Tensor]]:
-        """Run decomposition, thresholding, and reconstruction."""
+    def _transform(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
+        """Decompose, threshold, and reconstruct an input tensor."""
         g = x
 
         hl = []  # detail coefficients, finest to coarsest
@@ -243,15 +226,26 @@ class Despawn(nn.Module):
             g = self.lp_trans(g, kGT, inSizel[lev])
             g = g + h
 
-        # ----- Sparsity loss term -----
-        if not self.loss_coeff:
-            v_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
+        return g, gint, hl
 
-        elif self.loss_coeff == "l1":
-            # Compute the mean absolute value across all coefficients.
-            all_coeffs = torch.cat([gint] + hl, dim=2)
-            v_loss = torch.mean(torch.abs(all_coeffs), dim=2, keepdim=True)
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        """Return the reconstruction and coefficient sparsity loss."""
+        reconstruction, approximation, details = self._transform(x)
 
-        if return_coeffs:
-            return (g, gint, hl[::-1])
-        return g, v_loss
+        if self.loss_coeff is None:
+            coefficient_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
+        else:
+            all_coefficients = torch.cat([approximation] + details, dim=2)
+            coefficient_loss = torch.mean(
+                torch.abs(all_coefficients), dim=2, keepdim=True
+            )
+
+        return reconstruction, coefficient_loss
+
+    def decompose(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
+        """Return the reconstruction and thresholded wavelet coefficients.
+
+        Detail coefficients are ordered from the coarsest level to the finest.
+        """
+        reconstruction, approximation, details = self._transform(x)
+        return reconstruction, approximation, details[::-1]
