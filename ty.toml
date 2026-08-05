@@ -1,6 +1,7 @@
 [rules]
-unresolved-attribute = "ignore"
+division-by-zero = "warn"
 missing-type-argument = "warn"
+possibly-unresolved-reference = "warn"
 
 [src]
 # Lock what gets checked so "ty check" and "ty check ." act the same
