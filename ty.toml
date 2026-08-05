@@ -13,3 +13,10 @@ root = ["./src/"]
 
 [terminal]
 error-on-warning = false
+
+[[overrides]]
+include = ["./tests/test_legacy_layers.py", "tests/test_legacy_model.py"]
+
+[overrides.rules]
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
