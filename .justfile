@@ -16,10 +16,10 @@ typecheck:
     @uv run ty check src/
 
 test:
-    @uv run --isolated --python 3.12 --extra torch-cpu pytest -m "not legacy_tf" -v --tb=short tests/
+    @uv run --isolated --python 3.12 --extra torch-cpu pytest -m "not legacy_tf" -rs -v --tb=short tests/
 
 test-parity:
-    @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -m legacy_tf -v --tb=short tests/
+    @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -m "legacy_tf" -rs -v --tb=short tests/
 
 test-all:
     @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -v --tb=short tests/
