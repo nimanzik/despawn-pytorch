@@ -1,5 +1,14 @@
 [rules]
 unresolved-attribute = "ignore"
+missing-type-argument = "warn"
 
 [src]
-exclude = ["tests/legacy"]
+# Lock what gets checked so "ty check" and "ty check ." act the same
+include = ["./src/", "./tests/"]
+exclude = ["./tests/legacy/"]
+
+[environment]
+root = ["./src/"]
+
+[terminal]
+error-on-warning = false
