@@ -256,8 +256,10 @@ torch-cu132 = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "einops" },
     { name = "ipython" },
+]
+test = [
+    { name = "einops" },
     { name = "numpy" },
     { name = "pytest" },
 ]
@@ -272,9 +274,9 @@ requires-dist = [
 provides-extras = ["torch-cpu", "torch-cu126", "torch-cu130", "torch-cu132"]
 
 [package.metadata.requires-dev]
-dev = [
+dev = [{ name = "ipython", specifier = ">=9.15.0" }]
+test = [
     { name = "einops", specifier = ">=0.8.2" },
-    { name = "ipython", specifier = ">=9.15.0" },
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "pytest", specifier = ">=9.1.1" },
 ]

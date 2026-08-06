@@ -15,11 +15,16 @@ format:
 typecheck:
     @uv run ty check src/
 
+uv_test_options := "--isolated --no-dev --group test --python 3.12 --extra torch-cpu"
+pytest_options := "-v --tb=short tests/"
+
 test:
-    @uv run --isolated --python 3.12 --extra torch-cpu pytest -m "not legacy_tf" -rs -v --tb=short tests/
+    uv run {{ uv_test_options }} \
+        pytest -m "not legacy_tf" -rs {{ pytest_options }}
 
 test-parity:
-    @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -m "legacy_tf" -rs -v --tb=short tests/
+    uv run {{ uv_test_options }} --with tensorflow-cpu \
+        pytest -m "legacy_tf" -rs {{ pytest_options }}
 
 test-all:
-    @uv run --isolated --python 3.12 --with tensorflow-cpu --extra torch-cpu pytest -v --tb=short tests/
+    uv run {{ uv_test_options }} --with tensorflow-cpu pytest {{ pytest_options }}
