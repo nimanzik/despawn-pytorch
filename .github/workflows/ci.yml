@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.12.2"
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: "3.14"
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Check lock file
+        run: uv lock --check
+
+      - name: Check lint
+        run: just --verbose lint-check
+
+      - name: Check formatting
+        run: just --verbose format-check
+
+      - name: Check types
+        run: just --verbose typecheck
+
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ matrix.python-version }}
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Run tests
+        run: just --verbose test ${{ matrix.python-version }}
+
+  test-parity:
+    name: TensorFlow parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: ${{ matrix.python-version }}
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Run parity tests
+        run: just --verbose test-parity ${{ matrix.python-version }}
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+        with:
+          python-version: "3.13"
+          uv-version: ${{ env.UV_VERSION }}
+
+      - name: Build and check package
+        run: just --verbose build-check
+
+      - name: Test wheel installation
+        working-directory: /tmp
+        run: >-
+          uv run --isolated --no-project --python 3.13
+          --index https://download.pytorch.org/whl/cpu
+          --with "${{ github.workspace }}"/dist/*.whl
+          --with "torch==2.12.1+cpu"
+          --with numpy
+          python -c "from despawn_pytorch import Despawn"
+
+      - name: Test source distribution installation
+        working-directory: /tmp
+        run: >-
+          uv run --isolated --no-project --python 3.13
+          --index https://download.pytorch.org/whl/cpu
+          --with "${{ github.workspace }}"/dist/*.tar.gz
+          --with "torch==2.12.1+cpu"
+          --with numpy
+          python -c "from despawn_pytorch import Despawn"
