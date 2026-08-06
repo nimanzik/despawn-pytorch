@@ -5,14 +5,11 @@ possibly-unresolved-reference = "warn"
 
 [src]
 # Lock what gets checked so "ty check" and "ty check ." act the same
-include = ["./src/", "./tests/"]
-exclude = ["./tests/legacy/"]
+include = ["src/", "tests/"]
+exclude = ["tests/legacy/"]
 
 [environment]
 root = ["./src/"]
-
-[terminal]
-error-on-warning = false
 
 [[overrides]]
 include = ["./tests/test_legacy_*.py"]
