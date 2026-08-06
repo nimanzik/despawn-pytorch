@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import isfinite
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -101,16 +103,23 @@ class HardThreshold(nn.Module):
         self, init_value: float | int = 1.0, learnable: bool = True, alpha: float = 10.0
     ) -> None:
         super().__init__()
+        if not isfinite(init_value) or init_value < 0:
+            raise ValueError(
+                f"init_value must be finite and non-negative, got {init_value}"
+            )
+        if not isfinite(alpha) or alpha <= 0:
+            raise ValueError(f"alpha must be finite and positive, got {alpha}")
+
         self.positive_threshold = nn.Parameter(
             torch.full((1, 1, 1, 1), init_value), requires_grad=learnable
         )
         self.negative_threshold = nn.Parameter(
             torch.full((1, 1, 1, 1), init_value), requires_grad=learnable
         )
-        self.alpha = alpha
+        self.alpha = float(alpha)
 
     def forward(self, x: Tensor) -> Tensor:
         mask = torch.sigmoid(
-            self.alpha * (x - self.positive_threshold)
-        ) + torch.sigmoid(-self.alpha * (x + self.negative_threshold))
+            self.alpha * (x - self.positive_threshold.abs())
+        ) + torch.sigmoid(-self.alpha * (x + self.negative_threshold.abs()))
         return x * mask
