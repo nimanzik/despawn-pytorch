@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+import numpy as np
 import pytest
 import torch
 
@@ -53,6 +54,20 @@ class TestDespawn:
     def test_rejects_unknown_constraint(self) -> None:
         with pytest.raises(ValueError, match="kernels_constraint"):
             Despawn(kernels_constraint="unknown")  # ty: ignore[invalid-argument-type]
+
+    def test_numpy_integer_kernel_size(self) -> None:
+        model = Despawn(kernel_init=np.int64(8))
+
+        assert model.kernel_store[0].shape == (1, 1, 8, 1)
+
+    def test_rejects_empty_kernel(self) -> None:
+        with pytest.raises(ValueError, match="at least one coefficient"):
+            Despawn(kernel_init=[])
+
+    @pytest.mark.parametrize("kernel_size", [0, -1])
+    def test_rejects_invalid_kernel_size(self, kernel_size: int) -> None:
+        with pytest.raises(ValueError, match="kernel size must be a positive integer"):
+            Despawn(kernel_init=kernel_size)
 
     def test_loss_coeff_none_returns_zero(self) -> None:
         model = Despawn(loss_coeff=None)
