@@ -200,14 +200,14 @@ class Despawn(nn.Module):
         inSizel = []  # shapes before downsampling, needed for reconstruction
 
         # ----- Decomposition -----
-        for lev in range(self.n_levels):
+        for decomp_level in range(self.n_levels):
             inSizel.append(g.shape)  # save shape before downsampling
 
-            kG = self._kG[lev]  # low-pass analysis kernel tensor
-            kH = self._kH[lev]  # high-pass analysis kernel tensor
+            kG = self._kG[decomp_level]  # low-pass analysis kernel tensor
+            kH = self._kH[decomp_level]  # high-pass analysis kernel tensor
 
             # Detail coefficients: high-pass filtered + hard-thresholded
-            h = self.ht_details[lev](self.hp_wave(g, kH))
+            h = self.ht_details[decomp_level](self.hp_wave(g, kH))
             hl.append(h)
 
             # Approximation: low-pass filtered (downsampled)
@@ -218,12 +218,12 @@ class Despawn(nn.Module):
         gint = g  # save for coefficient output / L1 loss
 
         # ----- Reconstruction -----
-        for lev in range(self.n_levels - 1, -1, -1):
-            kGT = self._kGT[lev]
-            kHT = self._kHT[lev]
+        for recon_level in range(self.n_levels - 1, -1, -1):
+            kGT = self._kGT[recon_level]
+            kHT = self._kHT[recon_level]
 
-            h = self.hp_trans(hl[lev], kHT, inSizel[lev])
-            g = self.lp_trans(g, kGT, inSizel[lev])
+            h = self.hp_trans(hl[recon_level], kHT, inSizel[recon_level])
+            g = self.lp_trans(g, kGT, inSizel[recon_level])
             g = g + h
 
         return g, gint, hl
@@ -233,14 +233,12 @@ class Despawn(nn.Module):
         reconstruction, approximation, details = self._transform(x)
 
         if self.loss_coeff is None:
-            coefficient_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
+            coeff_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
         else:
-            all_coefficients = torch.cat([approximation] + details, dim=2)
-            coefficient_loss = torch.mean(
-                torch.abs(all_coefficients), dim=2, keepdim=True
-            )
+            all_coeffs = torch.cat([approximation] + details, dim=2)
+            coeff_loss = torch.mean(torch.abs(all_coeffs), dim=2, keepdim=True)
 
-        return reconstruction, coefficient_loss
+        return reconstruction, coeff_loss
 
     def decompose(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
         """Return the reconstruction and thresholded wavelet coefficients.
