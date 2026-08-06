@@ -70,29 +70,6 @@ def apply_conv2d(signal: Tensor, kernel: Tensor, strides: tuple[int, int]) -> Te
     return F.conv2d(padded, kernel, stride=strides, padding=0)
 
 
-def _compute_transpose_same_cropping(kernel_size: int, stride: int) -> int:
-    """Return leading-side cropping for a transposed convolution with `padding=SAME`.
-
-    Parameters
-    ----------
-    kernel_size : int
-        Size of the convolution kernel.
-    stride : int
-        Stride of the convolution.
-
-    Returns
-    -------
-    output : int
-        The amount of cropping to apply to the leading side of the output.
-
-    Warnings
-    --------
-    - This function is not generalised to `dilation` values other than 1.
-    - This function is not intended to be called directly.
-    """  # noqa: W505
-    return max((kernel_size - stride) // 2, 0)
-
-
 def apply_conv_transpose2d(
     signal: Tensor,
     kernel: Tensor,
@@ -117,22 +94,43 @@ def apply_conv_transpose2d(
     output : torch.Tensor, shape (N, C_out, H_out, W_out)
         Transposed convolution output.
     """
-    transposed = F.conv_transpose2d(signal, kernel, stride=strides, padding=0)
+    if len(output_shape) != 4:
+        raise ValueError("output_shape must contain four dimensions")
+
+    n_out, c_out, h_out, w_out = output_shape
+    if n_out != signal.shape[0]:
+        raise ValueError(
+            f"Requested batch size {n_out}, but input batch size is {signal.shape[0]}"
+        )
+    if c_out != kernel.shape[1]:
+        raise ValueError(
+            f"Requested {c_out} output channels, but kernel produces {kernel.shape[1]}"
+        )
+
+    expected_h_in = (h_out + strides[0] - 1) // strides[0]
+    expected_w_in = (w_out + strides[1] - 1) // strides[1]
+    if signal.shape[2:] != (expected_h_in, expected_w_in):
+        raise ValueError(
+            "Input spatial shape is inconsistent with output_shape and strides: "
+            f"expected {(expected_h_in, expected_w_in)}, "
+            f"got {tuple(signal.shape[2:])}"
+        )
 
     h_k, w_k = kernel.shape[2], kernel.shape[3]
-    h_out, w_out = output_shape[2], output_shape[3]
+    crop_top, crop_bottom = _compute_same_padding(h_out, h_k, stride=strides[0])
+    crop_left, crop_right = _compute_same_padding(w_out, w_k, stride=strides[1])
 
-    crop_top = _compute_transpose_same_cropping(h_k, stride=strides[0])
-    crop_left = _compute_transpose_same_cropping(w_k, stride=strides[1])
+    transposed = F.conv_transpose2d(signal, kernel, stride=strides, padding=0)
+    raw_h, raw_w = transposed.shape[2], transposed.shape[3]
+    h_stop = raw_h - crop_bottom if crop_bottom else raw_h
+    w_stop = raw_w - crop_right if crop_right else raw_w
+    transposed = transposed[..., crop_top:h_stop, crop_left:w_stop]
 
-    h_in, w_in = transposed.shape[2], transposed.shape[3]
-    crop_bottom = max(h_in - h_out - crop_top, 0)
-    crop_right = max(w_in - w_out - crop_left, 0)
+    current_h, current_w = transposed.shape[2], transposed.shape[3]
+    if current_h > h_out or current_w > w_out:
+        raise RuntimeError(
+            "Transpose result is larger than requested shape: "
+            f"got {(current_h, current_w)}, requested {(h_out, w_out)}"
+        )
 
-    transposed = transposed[
-        ..., crop_top : h_in - crop_bottom, crop_left : w_in - crop_right
-    ]
-
-    pad_bottom = max(h_out - h_in, 0)
-    pad_right = max(w_out - w_in, 0)
-    return F.pad(transposed, (0, pad_right, 0, pad_bottom))
+    return F.pad(transposed, (0, w_out - current_w, 0, h_out - current_h))
