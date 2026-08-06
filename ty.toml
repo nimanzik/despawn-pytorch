@@ -15,8 +15,13 @@ root = ["./src/"]
 error-on-warning = false
 
 [[overrides]]
-include = ["./tests/test_legacy_layers.py", "tests/test_legacy_model.py"]
+include = ["./tests/test_legacy_*.py"]
 
 [overrides.rules]
 unresolved-attribute = "ignore"
+
+[[overrides]]
+include = ["./tests/**"]
+
+[overrides.rules]
 unresolved-import = "ignore"
