@@ -69,6 +69,66 @@ def _create_kernel(
     return nn.Parameter(kernel.reshape(1, 1, -1, 1), requires_grad=learnable)
 
 
+def _prepare_input(x: Tensor) -> tuple[Tensor, tuple[int, ...]]:
+    """Convert a public time-last tensor to the internal convolution layout.
+
+    Every dimension before the last is treated as an independent signal
+    dimension. These dimensions are flattened into one internal batch so the
+    existing two-dimensional convolution operations can process each signal
+    independently.
+
+    Parameters
+    ----------
+    x : torch.Tensor, shape (..., T)
+        Input containing one or more time series. The last dimension of length
+        ``T`` is the time axis.
+
+    Returns
+    -------
+    internal : torch.Tensor, shape (M, 1, T, 1)
+        Input reshaped for the internal convolution operations, where ``M`` is
+        the product of all leading dimensions. For a one-dimensional input,
+        ``M`` is 1.
+    leading_shape : tuple[int, ...]
+        Original dimensions before the time axis. This shape is used to restore
+        public outputs after the transform.
+
+    Raises
+    ------
+    ValueError
+        If ``x`` is scalar, has an empty time axis, or contains no signals.
+    """
+    if x.ndim < 1:
+        raise ValueError("x must have at least one dimension for the time axis")
+    if x.shape[-1] < 1:
+        raise ValueError("the time axis must contain at least one sample")
+    if x.numel() == 0:
+        raise ValueError("x must contain at least one signal")
+
+    leading_shape = x.shape[:-1]
+    internal = x.reshape(-1, 1, x.shape[-1], 1)
+    return internal, leading_shape
+
+
+def _restore_time_last(x: Tensor, leading_shape: tuple[int, ...]) -> Tensor:
+    """Restore an internal tensor to the public time-last layout.
+
+    Parameters
+    ----------
+    x : torch.Tensor, shape (M, 1, T, 1)
+        Output from an internal convolution operation. ``M`` must equal the
+        product of ``leading_shape``, or 1 when ``leading_shape`` is empty.
+    leading_shape : tuple[int, ...]
+        Dimensions that preceded the time axis in the public input.
+
+    Returns
+    -------
+    output : torch.Tensor, shape (..., T)
+        Tensor with ``leading_shape`` restored and time as the last axis.
+    """
+    return x.reshape(*leading_shape, x.shape[2])
+
+
 def get_num_levels(signal_length: int) -> int:
     """Return the number of decomposition levels for a signal length.
 
@@ -199,7 +259,7 @@ class Despawn(nn.Module):
         )
 
     def _transform(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
-        """Decompose, threshold, and reconstruct an input tensor."""
+        """Decompose, threshold, and reconstruct an internal input tensor."""
         g = x
 
         hl = []  # detail coefficients, finest to coarsest
@@ -235,21 +295,81 @@ class Despawn(nn.Module):
         return g, gint, hl
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
-        """Return the reconstruction and coefficient sparsity loss."""
-        reconstruction, approximation, details = self._transform(x)
+        """Reconstruct time series and calculate their sparsity penalties.
+
+        The model applies the same wavelet transform independently to every
+        item identified by the leading dimensions. It does not mix information
+        between those items.
+
+        Parameters
+        ----------
+        x : torch.Tensor, shape (..., T)
+            One or more time series with time as the last axis. For example,
+            ``(N, T)`` represents a batch and ``(N, S, T)`` represents ``S``
+            independent sensor signals for each batch item.
+
+        Returns
+        -------
+        reconstruction : torch.Tensor, shape (..., T)
+            Reconstructed signals with the same shape as ``x``.
+        coefficient_penalty : torch.Tensor, shape (...)
+            Mean absolute thresholded wavelet coefficient for each independent
+            signal. Its shape is ``x.shape[:-1]``. A one-dimensional input
+            produces a scalar tensor. When ``loss_coeff`` is ``None``, every
+            value is zero.
+
+        Raises
+        ------
+        ValueError
+            If ``x`` is scalar, has an empty time axis, or contains no signals.
+        """
+        internal, leading_shape = _prepare_input(x)
+        reconstruction, approximation, details = self._transform(internal)
 
         if self.loss_coeff is None:
-            coeff_loss = torch.zeros(1, 1, 1, 1, device=x.device, dtype=x.dtype)
+            coeff_loss = torch.zeros(internal.shape[0], device=x.device, dtype=x.dtype)
         else:
             all_coeffs = torch.cat([approximation] + details, dim=2)
-            coeff_loss = torch.mean(torch.abs(all_coeffs), dim=2, keepdim=True)
+            coeff_loss = torch.mean(torch.abs(all_coeffs), dim=(1, 2, 3))
 
-        return reconstruction, coeff_loss
+        return (
+            _restore_time_last(reconstruction, leading_shape),
+            coeff_loss.reshape(leading_shape),
+        )
 
     def decompose(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
-        """Return the reconstruction and thresholded wavelet coefficients.
+        """Reconstruct time series and return their thresholded coefficients.
 
-        Detail coefficients are ordered from the coarsest level to the finest.
+        The model applies the same wavelet transform independently to every
+        item identified by the leading dimensions. All returned tensors use
+        the public time-last layout.
+
+        Parameters
+        ----------
+        x : torch.Tensor, shape (..., T)
+            One or more time series with time as the last axis.
+
+        Returns
+        -------
+        reconstruction : torch.Tensor, shape (..., T)
+            Reconstructed signals with the same shape as ``x``.
+        approximation : torch.Tensor, shape (..., T_a)
+            Thresholded approximation coefficients from the deepest
+            decomposition level.
+        details : list[torch.Tensor]
+            Thresholded detail coefficients ordered from the coarsest level to
+            the finest. Each tensor has shape ``(..., T_i)``, where ``T_i`` is
+            the coefficient length at that level.
+
+        Raises
+        ------
+        ValueError
+            If ``x`` is scalar, has an empty time axis, or contains no signals.
         """
-        reconstruction, approximation, details = self._transform(x)
-        return reconstruction, approximation, details[::-1]
+        internal, leading_shape = _prepare_input(x)
+        reconstruction, approximation, details = self._transform(internal)
+        return (
+            _restore_time_last(reconstruction, leading_shape),
+            _restore_time_last(approximation, leading_shape),
+            [_restore_time_last(detail, leading_shape) for detail in details[::-1]],
+        )
