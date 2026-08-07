@@ -54,7 +54,7 @@ class TestDespawnLoss:
 
     def test_no_coefficient_loss(self) -> None:
         """Check that no coefficient loss uses only reconstruction loss."""
-        signal = torch.randn(2, 1, 8, 1)
+        signal = torch.randn(2, 8)
         model = Despawn(loss_coeff=None)
         reconstruction, coefficient_penalty = model(signal)
 

@@ -29,20 +29,62 @@ class TestDespawn:
 
         assert len(model.kernel_store) == expected_kernel_params
 
-        x = torch.randn(2, 1, 15, 1)
+        x = torch.randn(2, 15)
         recon, coeff_loss = model(x)
         recon2, approx, details = model.decompose(x)
 
         assert recon.shape == x.shape
-        assert coeff_loss.shape == (2, 1, 1, 1)
+        assert coeff_loss.shape == (2,)
         assert recon2.shape == x.shape
         torch.testing.assert_close(recon2, recon)
-        assert approx.shape == (2, 1, 2, 1)
+        assert approx.shape == (2, 2)
         assert [detail.shape for detail in details] == [
-            torch.Size([2, 1, 2, 1]),
-            torch.Size([2, 1, 4, 1]),
-            torch.Size([2, 1, 8, 1]),
+            torch.Size([2, 2]),
+            torch.Size([2, 4]),
+            torch.Size([2, 8]),
         ]
+
+    @pytest.mark.parametrize("shape", [(15,), (2, 15), (2, 3, 15)])
+    def test_time_last_shapes(self, shape: tuple[int, ...]) -> None:
+        model = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1], n_levels=3, threshold_init=0.25
+        )
+        x = torch.randn(shape)
+
+        reconstruction, coefficient_loss = model(x)
+        _, approximation, details = model.decompose(x)
+
+        assert reconstruction.shape == x.shape
+        assert coefficient_loss.shape == x.shape[:-1]
+        assert approximation.shape == (*x.shape[:-1], 2)
+        assert [detail.shape for detail in details] == [
+            torch.Size((*x.shape[:-1], 2)),
+            torch.Size((*x.shape[:-1], 4)),
+            torch.Size((*x.shape[:-1], 8)),
+        ]
+
+    def test_leading_dimensions_are_independent_signals(self) -> None:
+        model = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1], n_levels=3, threshold_init=0.25
+        )
+        x = torch.randn(2, 3, 15)
+
+        reconstruction, coefficient_loss = model(x)
+        flat_reconstruction, flat_coefficient_loss = model(x.reshape(-1, 15))
+
+        torch.testing.assert_close(reconstruction, flat_reconstruction.reshape(x.shape))
+        torch.testing.assert_close(
+            coefficient_loss, flat_coefficient_loss.reshape(x.shape[:-1])
+        )
+
+    @pytest.mark.parametrize(
+        "x", [torch.tensor(1.0), torch.empty(2, 0), torch.empty(0, 8)]
+    )
+    def test_rejects_inputs_without_signals(self, x: torch.Tensor) -> None:
+        model = Despawn()
+
+        with pytest.raises(ValueError):
+            model(x)
 
     @pytest.mark.parametrize("constraint", ["CQF", "PerLayer", "PerFilter", "Free"])
     def test_rejects_legacy_constraint_names(
@@ -69,9 +111,9 @@ class TestDespawn:
         with pytest.raises(ValueError, match="kernel size must be a positive integer"):
             Despawn(kernel_init=kernel_size)
 
-    def test_loss_coeff_none_returns_zero(self) -> None:
+    def test_loss_coeff_none_returns_one_zero_per_signal(self) -> None:
         model = Despawn(loss_coeff=None)
-        _, coeff_loss = model(torch.randn(2, 1, 8, 1))
+        _, coeff_loss = model(torch.randn(2, 3, 8))
 
-        assert coeff_loss.shape == (1, 1, 1, 1)
+        assert coeff_loss.shape == (2, 3)
         assert torch.equal(coeff_loss, torch.zeros_like(coeff_loss))

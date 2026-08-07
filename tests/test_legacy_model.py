@@ -75,7 +75,7 @@ def patched_legacy_create(monkeypatch: pytest.MonkeyPatch) -> LegacyCreateDeSpaW
 @pytest.fixture
 def model_input() -> NDArray:
     rng = np.random.default_rng(731)
-    return rng.normal(size=(2, 1, 15, 1)).astype("float32")
+    return rng.normal(size=(2, 15)).astype("float32")
 
 
 class TestDespawnLegacyParity:
@@ -113,19 +113,19 @@ class TestDespawnLegacyParity:
             threshold_learnable=True,
         )
 
-        tf_recon, tf_coeff_loss = tf_model(rearrange(model_input, "N C H W -> N H W C"))
+        tf_recon, tf_coeff_loss = tf_model(rearrange(model_input, "N T -> N T 1 1"))
         with torch.no_grad():
             torch_recon, torch_coeff_loss = torch_model(torch.from_numpy(model_input))
 
         np.testing.assert_allclose(
             torch_recon.numpy(),
-            rearrange(tf_recon.numpy(), "N H W C -> N C H W"),
+            rearrange(tf_recon.numpy(), "N T 1 1 -> N T"),
             rtol=1e-6,
             atol=1e-6,
         )
         np.testing.assert_allclose(
             torch_coeff_loss.numpy(),
-            rearrange(tf_coeff_loss.numpy(), "N H W C -> N C H W"),
+            rearrange(tf_coeff_loss.numpy(), "N 1 1 1 -> N"),
             rtol=1e-6,
             atol=1e-6,
         )
@@ -165,7 +165,7 @@ class TestDespawnLegacyParity:
         )
 
         tf_recon, tf_approx, tf_details = tf_coeff_model(
-            rearrange(model_input, "N C H W -> N H W C")
+            rearrange(model_input, "N T -> N T 1 1")
         )
         with torch.no_grad():
             torch_recon, torch_approx, torch_details = torch_model.decompose(
@@ -178,7 +178,7 @@ class TestDespawnLegacyParity:
         for torch_output, tf_output in zip(torch_outputs, tf_outputs, strict=True):
             np.testing.assert_allclose(
                 torch_output.numpy(),
-                rearrange(tf_output.numpy(), "N H W C -> N C H W"),
+                rearrange(tf_output.numpy(), "N T 1 1 -> N T"),
                 rtol=1e-6,
                 atol=1e-6,
             )
