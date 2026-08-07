@@ -83,7 +83,7 @@ class HighPassTrans(nn.Module):
         output_shape: tuple[int, int, int, int] | list[int] | torch.Size,
     ) -> Tensor:
         idxs = torch.arange(kernel.shape[2], device=kernel.device, dtype=kernel.dtype)
-        signs = ((-1) ** (idxs + 1)).reshape(1, 1, -1, 1)
+        signs = ((-1) ** idxs).reshape(1, 1, -1, 1)
         hp_kernel = torch.flip(kernel, dims=[2]) * signs
         return apply_conv_transpose2d(signal, hp_kernel, output_shape, strides=(2, 1))
 

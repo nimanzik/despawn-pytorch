@@ -120,7 +120,7 @@ class HighPassTrans(tf.keras.layers.Layer):
         super(HighPassTrans, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.qmfFlip     = tf.reshape(tf.Variable([(-1)**(i+1) for i in range(input_shape[1][0])],
+        self.qmfFlip     = tf.reshape(tf.Variable([(-1)**(i) for i in range(input_shape[1][0])],
                                                   dtype='float32', name='mask', trainable=False),(-1,1,1,1))
         super(HighPassTrans, self).build(input_shape)
 
