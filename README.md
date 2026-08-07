@@ -9,6 +9,8 @@ TensorFlow project. It loads and standardizes the included sunspot data, trains
 a model with the db4 kernel and NAdam, and plots the reconstruction and learned
 coefficient distributions.
 
+![DeSpaWN reconstruction and coefficient distributions](docs/assets/despawn-monthly-sunspots.png)
+
 Run the example on CPU from the repository root:
 
 ```console
