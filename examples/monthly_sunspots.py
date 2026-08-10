@@ -43,6 +43,8 @@ DB4_KERNEL = [
     0.2303778133088965,
 ]
 
+plt.style.use("bmh")
+
 
 def positive_int(value: str) -> int:
     """Parse a positive integer for a command line argument."""
@@ -173,7 +175,7 @@ def plot_coefficient_distributions(
         if len(values) > 1:
             ax.boxplot(values, positions=[level], widths=0.8)
         else:
-            ax.plot(level, values[0], "o", color="black")
+            ax.plot(level, values[0], "o", color="#2e3436", alpha=0.75)
 
     ax.set_title(title)
     ax.set_xlabel("Decomposition level")
@@ -192,7 +194,7 @@ def plot_results(
     train_recon = train_recon[0].detach().cpu()
     test_recon = test_recon[0].detach().cpu()
 
-    figure = plt.figure(figsize=(12, 8))
+    figure = plt.figure(figsize=(11, 8))
     recon_ax = figure.add_subplot(2, 1, 1)
     train_coeffs_ax = figure.add_subplot(2, 2, 3)
     test_coeffs_ax = figure.add_subplot(2, 2, 4)
@@ -206,11 +208,12 @@ def plot_results(
     recon_ax.set_title("Monthly sunspots")
     recon_ax.set_xlabel("Month index")
     recon_ax.set_ylabel("Standardized sunspot count")
-    recon_ax.legend()
+    recon_ax.legend(loc="upper left")
 
     # Set line transparency (alpha) for all plots in recon_ax
     for line in recon_ax.get_lines():
         line.set_alpha(0.75)
+        line.set_linewidth(1.25)
 
     plot_coefficient_distributions(
         train_coeffs_ax, train_coefficients, "Train coefficients"
