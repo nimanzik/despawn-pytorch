@@ -2,6 +2,30 @@
 
 _**De**noising **Spa**rse **W**avelet **N**etwork (**DeSpaWN**) – PyTorch implementation_
 
+## Monthly sunspot example
+
+`examples/monthly_sunspots.py` ports the complete example from the original
+TensorFlow project. It loads and standardizes the included sunspot data, trains
+a model with the db4 kernel and NAdam, and plots the reconstruction and learned
+coefficient distributions.
+
+![DeSpaWN reconstruction and coefficient distributions](docs/assets/despawn-monthly-sunspots.png)
+
+Run the example on CPU from the repository root:
+
+```console
+uv run --group examples --extra torch-cpu \
+    python examples/monthly_sunspots.py
+```
+
+Training uses 1,000 epochs by default, as in the original script. Use
+`--epochs 1 --no-show` for a quick check. Use `--output figure.png` to save the
+plot. If Matplotlib cannot open a window, the example uses its noninteractive
+backend and saves the figure in the system temporary directory.
+
+The CSV loading, normalization, optimizer, training loop, db4 values, and plots
+are part of the example. They are not part of the library API.
+
 ## Training
 
 `DespawnLoss` combines mean absolute reconstruction error with the mean wavelet

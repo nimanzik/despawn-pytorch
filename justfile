@@ -8,6 +8,7 @@ clean:
 
 uv_quality_options := "--frozen --isolated --no-dev --group quality"
 uv_test_options := "--frozen --isolated --no-dev --group test --extra torch-cpu"
+uv_example_options := "--frozen --isolated --no-dev --group examples --extra torch-cpu"
 pytest_options := "-v --tb=short"
 
 lint:
@@ -23,7 +24,15 @@ format-check:
     @uv run {{ uv_quality_options }} ruff format --check
 
 typecheck:
-    @uv run {{ uv_quality_options }} --group test --extra torch-cpu ty check
+    @uv run {{ uv_quality_options }} --group examples --group test --extra torch-cpu ty check
+
+example epochs="1000":
+    @uv run {{ uv_example_options }} python examples/monthly_sunspots.py \
+        --epochs "{{ epochs }}"
+
+example-check:
+    @uv run {{ uv_example_options }} \
+        python examples/monthly_sunspots.py --epochs 1 --no-show
 
 test python_version="3.13":
     @uv run {{ uv_test_options }} --python "{{ python_version }}" \

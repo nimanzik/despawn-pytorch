@@ -49,6 +49,9 @@ jobs:
       - name: Check types
         run: just --verbose typecheck
 
+      - name: Check example
+        run: just --verbose example-check
+
   test:
     name: Test on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
