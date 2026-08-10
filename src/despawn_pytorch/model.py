@@ -156,7 +156,7 @@ def get_num_levels(signal_length: int) -> int:
 
 
 class Despawn(nn.Module):
-    """Deep Sparse Wavelet Network (DeSpaWN).
+    """Denoising Sparse Wavelet Network.
 
     An encoder-decoder network whose analysis and synthesis filters are
     learnable wavelets. Hard-thresholding layers sparsify the wavelet
@@ -169,7 +169,9 @@ class Despawn(nn.Module):
         *,
         kernel_init: int | Sequence[float] | _SupportsArray = 8,
         kernel_learnable: bool = True,
-        kernels_constraint: Literal["cqf", "per_layer", "per_filter", "free"] = "cqf",
+        kernels_constraint: Literal[
+            "cqf", "per_layer", "per_filter", "free"
+        ] = "per_layer",
         n_levels: int = 1,
         loss_coeff: Literal["l1", None] = "l1",
         threshold_init: float = 1.0,
