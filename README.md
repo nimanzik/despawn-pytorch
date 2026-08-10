@@ -169,7 +169,7 @@ The training objective combines mean absolute reconstruction error with the
 mean absolute value of the thresholded coefficients:
 
 $$
-\mathcal{L} = \operatorname{MAE}(x, \hat{x}) + \lambda\,\operatorname{mean}(|c|)
+\mathcal{L} = \textrm{MAE}(x, \hat{x}) + \lambda \thinspace \textrm{Mean}(|c|)
 $$
 
 Here, $x$ is the input signal, and $\hat{x}$ is its reconstruction. The variable
