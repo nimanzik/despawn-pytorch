@@ -3,8 +3,7 @@ from __future__ import annotations
 from math import isfinite
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from .ops import apply_conv2d, apply_conv_transpose2d
 
@@ -100,7 +99,7 @@ class HardThreshold(nn.Module):
     """
 
     def __init__(
-        self, init_value: float | int = 1.0, learnable: bool = True, alpha: float = 10.0
+        self, init_value: float = 1.0, learnable: bool = True, alpha: float = 10.0
     ) -> None:
         super().__init__()
         if not isfinite(init_value) or init_value < 0:

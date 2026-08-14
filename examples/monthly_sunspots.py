@@ -19,6 +19,13 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+try:
+    from tkinter import TclError
+except ImportError:
+    PLOT_BACKEND_ERRORS: tuple[type[Exception], ...] = (ImportError, RuntimeError)
+else:
+    PLOT_BACKEND_ERRORS = (ImportError, RuntimeError, TclError)
+
 import matplotlib.pyplot as plt
 import polars as pl
 import torch
@@ -95,7 +102,7 @@ def prepare_plot_backend(*, no_show: bool) -> bool:
 
     try:
         probe = plt.figure()
-    except Exception as error:
+    except PLOT_BACKEND_ERRORS as error:
         backend = plt.get_backend()
         print(
             f"Matplotlib backend {backend!r} is unavailable "

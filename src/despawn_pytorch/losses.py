@@ -3,9 +3,8 @@ from __future__ import annotations
 import math
 from numbers import Real
 
-import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
+from torch import Tensor, nn
 
 __all__ = ["DespawnLoss"]
 
