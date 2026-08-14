@@ -5,8 +5,7 @@ from numbers import Integral
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from .layers import (
     HardThreshold,
@@ -173,7 +172,7 @@ class Despawn(nn.Module):
             "cqf", "per_layer", "per_filter", "free"
         ] = "per_layer",
         n_levels: int = 1,
-        loss_coeff: Literal["l1", None] = "l1",
+        loss_coeff: Literal["l1"] | None = "l1",
         threshold_init: float = 1.0,
         threshold_learnable: bool = True,
     ):

@@ -95,14 +95,14 @@ def torch_trans(
     )
 
 
-def tf_threshold(signal_nchw: Signal, init: float | int = 1.0) -> Output:
+def tf_threshold(signal_nchw: Signal, init: float = 1.0) -> Output:
     signal_nhwc = rearrange(signal_nchw, "N C H W -> N H W C")
     layer = LegacyHardThresholdAssym(init=init)
     output_nhwc = layer(signal_nhwc).numpy()
     return rearrange(output_nhwc, "N H W C -> N C H W")
 
 
-def torch_threshold(signal_nchw: Signal, init_value: float | int = 1.0) -> Output:
+def torch_threshold(signal_nchw: Signal, init_value: float = 1.0) -> Output:
     layer = HardThreshold(init_value=init_value)
     return layer(torch.from_numpy(signal_nchw)).detach().numpy()
 
