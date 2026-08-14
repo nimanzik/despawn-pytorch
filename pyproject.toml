@@ -13,10 +13,10 @@ maintainers = [
 dependencies = []
 
 [project.optional-dependencies]
-torch-cpu = ["torch>=2.12.1"]
-torch-cu126 = ["torch>=2.12.1"]
-torch-cu130 = ["torch>=2.12.1"]
-torch-cu132 = ["torch>=2.12.1"]
+torch-cpu = ["torch>=2.13.0"]
+torch-cu126 = ["torch>=2.13.0"]
+torch-cu130 = ["torch>=2.13.0"]
+torch-cu132 = ["torch>=2.13.0"]
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]
