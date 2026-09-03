@@ -146,24 +146,7 @@ asymmetric thresholds suppress small positive and negative coefficients. The
 decoder then combines the final approximation with the saved detail coefficients
 to reconstruct the signal.
 
-```mermaid
-flowchart LR
-    X[Input signal] --> A[Approximation]
-
-    subgraph D[Repeated decomposition levels]
-        A --> LP[Learned low pass filter<br/>and downsampling]
-        A --> HP[High pass filter<br/>and downsampling]
-        HP --> HTD[Learned threshold]
-        HTD --> C[Detail coefficients]
-        LP --> AN[Next approximation]
-    end
-
-    AN --> HTA[Learned threshold]
-    HTA --> FA[Final approximation]
-    C --> S[Learned synthesis filters<br/>and upsampling]
-    FA --> S
-    S --> R[Reconstructed signal]
-```
+![Learnable Denoising Sparse Wavelet Network architecture](docs/assets/diagram.svg)
 
 The training objective combines mean absolute reconstruction error with the
 mean absolute value of the thresholded coefficients:
