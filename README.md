@@ -10,23 +10,16 @@
 An unofficial PyTorch implementation of the Denoising Sparse Wavelet Network.
 
 > [!NOTE]
-> DeSpaWN PyTorch is an early release. Its public API may change before
-> version 1.0.
+> DeSpaWN PyTorch is an early release. Its public API may change as the
+> project develops.
+
+![Learnable Denoising Sparse Wavelet Network architecture](docs/assets/diagram.svg)
 
 DeSpaWN learns a sparse wavelet representation of raw signals without labels.
 It uses a wavelet encoder and decoder with learnable filters. The model also
 learns separate positive and negative thresholds that suppress small
 coefficients. Training balances signal reconstruction against coefficient
 sparsity.
-
-The package provides:
-
-- Learnable wavelet analysis and synthesis filters.
-- Four choices for sharing or separating filter kernels.
-- Learnable asymmetric hard thresholding at every decomposition level.
-- Reconstruction and access to thresholded approximation and detail coefficients.
-- Independent processing of any number of leading batch or sensor dimensions.
-- A combined reconstruction and sparsity loss for unsupervised training.
 
 ## Table of contents
 
@@ -145,8 +138,6 @@ for the next level. A high-pass filter produces detail coefficients. Learnable
 asymmetric thresholds suppress small positive and negative coefficients. The
 decoder then combines the final approximation with the saved detail coefficients
 to reconstruct the signal.
-
-![Learnable Denoising Sparse Wavelet Network architecture](docs/assets/diagram.svg)
 
 The training objective combines mean absolute reconstruction error with the
 mean absolute value of the thresholded coefficients:
