@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Learnable Denoising Sparse Wavelet Network</title>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=STIX+Two+Text:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+Math&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -16,7 +16,7 @@
       --sans: "Geist", system-ui, sans-serif;
       --serif: "Instrument Serif", serif;
       --mono: "Geist Mono", ui-monospace, monospace;
-      --math: "STIX Two Text", "Cambria Math", serif;
+      --math: "Noto Sans Math", "Cambria Math", sans-serif;
     }
     body {
       min-height: 100vh;
@@ -51,6 +51,7 @@
       fill: var(--soft);
     }
     .node-name { font-family: var(--sans); font-size: 12px; font-weight: 600; fill: var(--ink); }
+    .node-regular { font-weight: 400; }
     .math { font-family: var(--math); }
     .data-label { font-family: var(--math); font-size: 20px; fill: var(--ink); }
   </style>
@@ -114,21 +115,21 @@
       <!-- encoder nodes -->
       <rect x="128" y="136" width="80" height="48" rx="8" fill="#f5f5f5"/>
       <rect x="128" y="136" width="80" height="48" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="168" y="156" text-anchor="middle" class="node-name">Conv. Layer</text>
+      <text x="168" y="156" text-anchor="middle" class="node-name node-regular">Conv. Layer</text>
       <text x="168" y="176" text-anchor="middle" class="node-name math">h<tspan baseline-shift="super" font-size="8">ℓ</tspan></text>
 
       <circle cx="268" cy="160" r="16" fill="#f5f5f5"/>
       <circle cx="268" cy="160" r="16" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <text x="268" y="164" text-anchor="middle" class="node-name">↓ 2</text>
+      <text x="268" y="164" text-anchor="middle" class="node-name node-regular">↓ 2</text>
 
       <rect x="128" y="232" width="80" height="48" rx="8" fill="#f5f5f5"/>
       <rect x="128" y="232" width="80" height="48" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="168" y="252" text-anchor="middle" class="node-name">Conv. Layer</text>
+      <text x="168" y="252" text-anchor="middle" class="node-name node-regular">Conv. Layer</text>
       <text x="168" y="272" text-anchor="middle" class="node-name math">g<tspan baseline-shift="super" font-size="8">ℓ</tspan></text>
 
       <circle cx="268" cy="256" r="16" fill="#f5f5f5"/>
       <circle cx="268" cy="256" r="16" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <text x="268" y="260" text-anchor="middle" class="node-name">↓ 2</text>
+      <text x="268" y="260" text-anchor="middle" class="node-name node-regular">↓ 2</text>
 
       <rect x="328" y="232" width="64" height="48" rx="8" fill="#f5f5f5"/>
       <rect x="328" y="232" width="64" height="48" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
@@ -141,25 +142,25 @@
       <!-- decoder nodes -->
       <circle cx="588" cy="160" r="16" fill="#f5f5f5"/>
       <circle cx="588" cy="160" r="16" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <text x="588" y="164" text-anchor="middle" class="node-name">↑ 2</text>
+      <text x="588" y="164" text-anchor="middle" class="node-name node-regular">↑ 2</text>
 
       <rect x="636" y="128" width="112" height="64" rx="8" fill="#f5f5f5"/>
       <rect x="636" y="128" width="112" height="64" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="692" y="156" text-anchor="middle" class="node-name">Conv. Transpose</text>
-      <text x="692" y="176" text-anchor="middle" class="node-name">Layer <tspan class="math">h̄</tspan><tspan class="math" baseline-shift="super" font-size="8">ℓ</tspan></text>
+      <text x="692" y="156" text-anchor="middle" class="node-name node-regular">Conv. Transpose</text>
+      <text x="692" y="176" text-anchor="middle" class="node-name"><tspan class="node-regular">Layer </tspan><tspan class="math">h̄</tspan><tspan class="math" baseline-shift="super" font-size="8">ℓ</tspan></text>
 
       <circle cx="588" cy="256" r="16" fill="#f5f5f5"/>
       <circle cx="588" cy="256" r="16" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <text x="588" y="260" text-anchor="middle" class="node-name">↑ 2</text>
+      <text x="588" y="260" text-anchor="middle" class="node-name node-regular">↑ 2</text>
 
       <rect x="636" y="224" width="112" height="64" rx="8" fill="#f5f5f5"/>
       <rect x="636" y="224" width="112" height="64" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="692" y="252" text-anchor="middle" class="node-name">Conv. Transpose</text>
-      <text x="692" y="272" text-anchor="middle" class="node-name">Layer <tspan class="math">ḡ</tspan><tspan class="math" baseline-shift="super" font-size="8">ℓ</tspan></text>
+      <text x="692" y="252" text-anchor="middle" class="node-name node-regular">Conv. Transpose</text>
+      <text x="692" y="272" text-anchor="middle" class="node-name"><tspan class="node-regular">Layer </tspan><tspan class="math">ḡ</tspan><tspan class="math" baseline-shift="super" font-size="8">ℓ</tspan></text>
 
       <circle cx="816" cy="208" r="12" fill="#f5f5f5"/>
       <circle cx="816" cy="208" r="12" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
-      <text x="816" y="212" text-anchor="middle" font-family="Geist, sans-serif" font-size="12" font-weight="600" fill="#2d3142">+</text>
+      <text x="816" y="212" text-anchor="middle" font-family="Geist, sans-serif" font-size="12" font-weight="400" fill="#2d3142">+</text>
 
       <text x="896" y="216" class="data-label">ā<tspan baseline-shift="super" font-size="12">(ℓ-1)</tspan></text>
       </g>
