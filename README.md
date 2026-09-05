@@ -13,7 +13,11 @@ An unofficial PyTorch implementation of the Denoising Sparse Wavelet Network.
 > DeSpaWN PyTorch is an early release. Its public API may change as the
 > project develops.
 
-![Learnable Denoising Sparse Wavelet Network architecture](docs/assets/diagram.svg)
+[//]: # (![Learnable Denoising Sparse Wavelet Network architecture]\(docs/assets/diagram.svg\))
+
+<p align="center">
+    <img src="docs/assets/diagram.svg" width="75%">
+</p>
 
 DeSpaWN learns a sparse wavelet representation of raw signals without labels.
 It uses a wavelet encoder and decoder with learnable filters. The model also
