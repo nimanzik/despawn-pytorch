@@ -202,29 +202,29 @@ class Despawn(nn.Module):
         if constraint == _KernelsConstraint.CQF:
             # Share one kernel across all levels and filter banks.
             kern = _create_kernel(kernel_init, kernel_learnable)
-            self._kG = [kern] * n_levels
-            self._kH = [kern] * n_levels
-            self._kGT = [kern] * n_levels
-            self._kHT = [kern] * n_levels
+            self._kG = [0] * n_levels
+            self._kH = [0] * n_levels
+            self._kGT = self._kG
+            self._kHT = self._kH
             self.kernel_store = nn.ParameterList([kern])
 
         elif constraint == _KernelsConstraint.PER_LAYER:
             # Share one kernel across all filter banks at each level.
             kerns = get_kernel_list(n_levels)
-            self._kG = kerns
-            self._kH = kerns
-            self._kGT = kerns
-            self._kHT = kerns
+            self._kG = list(range(n_levels))
+            self._kH = self._kG
+            self._kGT = self._kG
+            self._kHT = self._kH
             self.kernel_store = nn.ParameterList(kerns)
 
         elif constraint == _KernelsConstraint.PER_FILTER:
             # Use separate analysis kernels, with synthesis tied to analysis.
             kerns_G = get_kernel_list(n_levels)
             kerns_H = get_kernel_list(n_levels)
-            self._kG = kerns_G
-            self._kH = kerns_H
-            self._kGT = kerns_G  # synthesis G  = analysis G
-            self._kHT = kerns_H  # synthesis H  = analysis H
+            self._kG = list(range(n_levels))
+            self._kH = list(range(n_levels, 2 * n_levels))
+            self._kGT = self._kG  # synthesis G = analysis G
+            self._kHT = self._kH  # synthesis H = analysis H
             self.kernel_store = nn.ParameterList(kerns_G + kerns_H)
 
         elif constraint == _KernelsConstraint.FREE:
@@ -233,10 +233,10 @@ class Despawn(nn.Module):
             kerns_H = get_kernel_list(n_levels)
             kerns_GT = get_kernel_list(n_levels)
             kerns_HT = get_kernel_list(n_levels)
-            self._kG = kerns_G
-            self._kH = kerns_H
-            self._kGT = kerns_GT
-            self._kHT = kerns_HT
+            self._kG = list(range(n_levels))
+            self._kH = list(range(n_levels, 2 * n_levels))
+            self._kGT = list(range(2 * n_levels, 3 * n_levels))
+            self._kHT = list(range(3 * n_levels, 4 * n_levels))
             self.kernel_store = nn.ParameterList(
                 kerns_G + kerns_H + kerns_GT + kerns_HT
             )
@@ -270,8 +270,8 @@ class Despawn(nn.Module):
         for decomp_level in range(self.n_levels):
             inSizel.append(g.shape)  # save shape before downsampling
 
-            kG = self._kG[decomp_level]  # low-pass analysis kernel tensor
-            kH = self._kH[decomp_level]  # high-pass analysis kernel tensor
+            kG = self.kernel_store[self._kG[decomp_level]]  # low-pass analysis kernel
+            kH = self.kernel_store[self._kH[decomp_level]]  # high-pass analysis kernel
 
             # Detail coefficients: high-pass filtered + hard-thresholded
             h = self.ht_details[decomp_level](self.hp_wave(g, kH))
@@ -286,8 +286,8 @@ class Despawn(nn.Module):
 
         # ----- Reconstruction -----
         for recon_level in range(self.n_levels - 1, -1, -1):
-            kGT = self._kGT[recon_level]
-            kHT = self._kHT[recon_level]
+            kGT = self.kernel_store[self._kGT[recon_level]]
+            kHT = self.kernel_store[self._kHT[recon_level]]
 
             h = self.hp_trans(hl[recon_level], kHT, inSizel[recon_level])
             g = self.lp_trans(g, kGT, inSizel[recon_level])

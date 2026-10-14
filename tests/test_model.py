@@ -13,6 +13,80 @@ type LegacyConstraintLike = Literal["CQF", "PerLayer", "PerFilter", "Free"]
 
 
 class TestDespawn:
+    @pytest.mark.parametrize("constraint", ["cqf", "per_layer", "per_filter", "free"])
+    def test_assign_zero_kernels(self, constraint: ActiveConstraintLike) -> None:
+        # Loading zero kernels with assign=True zeroes all transform outputs.
+        model = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1],
+            kernels_constraint=constraint,
+            n_levels=3,
+            threshold_init=0.25,
+        )
+        checkpoint = {
+            name: torch.zeros_like(value) if name.startswith("kernel_store.") else value
+            for name, value in model.state_dict().items()
+        }
+        model.load_state_dict(checkpoint, assign=True)
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15)
+
+        reconstruction, penalty = model(signal)
+        decomposed_reconstruction, approximation, details = model.decompose(signal)
+
+        for output in (
+            reconstruction,
+            penalty,
+            decomposed_reconstruction,
+            approximation,
+            *details,
+        ):
+            torch.testing.assert_close(output, torch.zeros_like(output))
+
+    @pytest.mark.parametrize("constraint", ["cqf", "per_layer", "per_filter", "free"])
+    def test_assign_kernel_training(self, constraint: ActiveConstraintLike) -> None:
+        # Loaded kernels drive reconstruction and training with assign=True.
+        model = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1],
+            kernels_constraint=constraint,
+            n_levels=3,
+            threshold_init=0.25,
+            threshold_learnable=False,
+        )
+        reference = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1],
+            kernels_constraint=constraint,
+            n_levels=3,
+            threshold_init=0.25,
+            threshold_learnable=False,
+        )
+        checkpoint = {
+            name: value * (0.8 + 0.02 * int(name.rsplit(".", 1)[1]))
+            if name.startswith("kernel_store.")
+            else value.clone()
+            for name, value in model.state_dict().items()
+        }
+        model.load_state_dict(checkpoint, assign=True)
+        reference.load_state_dict(checkpoint)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15)
+        reconstruction, penalty = model(signal)
+        expected_reconstruction, expected_penalty = reference(signal)
+        torch.testing.assert_close(reconstruction, expected_reconstruction)
+        torch.testing.assert_close(penalty, expected_penalty)
+
+        before = [parameter.detach().clone() for parameter in model.parameters()]
+        DespawnLoss()(signal, reconstruction, penalty).backward()
+        for parameter in model.parameters():
+            if parameter.requires_grad:
+                assert parameter.grad is not None
+                assert torch.isfinite(parameter.grad).all()
+                assert torch.count_nonzero(parameter.grad) > 0
+
+        optimizer.step()
+        for parameter, previous in zip(model.parameters(), before, strict=True):
+            assert torch.equal(parameter, previous) == (not parameter.requires_grad)
+        updated_reconstruction, _ = model(signal)
+        assert not torch.equal(updated_reconstruction, reconstruction)
+
     def test_changing_initializer_does_not_change_reconstruction(self) -> None:
         initializer = np.array([0.2, -0.5, 0.7, 0.1], dtype=np.float32)
         model = Despawn(kernel_init=initializer, n_levels=3, threshold_init=0.25)
