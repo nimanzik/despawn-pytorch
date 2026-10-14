@@ -110,10 +110,12 @@ class HardThreshold(nn.Module):
             raise ValueError(f"alpha must be finite and positive, got {alpha}")
 
         self.positive_threshold = nn.Parameter(
-            torch.full((1, 1, 1, 1), init_value), requires_grad=learnable
+            torch.full((1, 1, 1, 1), init_value, dtype=torch.get_default_dtype()),
+            requires_grad=learnable,
         )
         self.negative_threshold = nn.Parameter(
-            torch.full((1, 1, 1, 1), init_value), requires_grad=learnable
+            torch.full((1, 1, 1, 1), init_value, dtype=torch.get_default_dtype()),
+            requires_grad=learnable,
         )
         self.alpha = float(alpha)
 

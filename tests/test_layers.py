@@ -7,6 +7,23 @@ from despawn_pytorch.layers import HardThreshold
 
 
 class TestHardThreshold:
+    @pytest.mark.parametrize("init_value", [0, 1])
+    def test_integer_matches_float_threshold(self, init_value: int) -> None:
+        integer = HardThreshold(init_value=init_value)
+        floating = HardThreshold(init_value=float(init_value))
+        signal = torch.linspace(-2, 2, 9).reshape(1, 1, -1, 1)
+
+        torch.testing.assert_close(integer(signal), floating(signal))
+        integer(signal).sum().backward()
+        floating(signal).sum().backward()
+        for actual, expected in zip(
+            integer.parameters(), floating.parameters(), strict=True
+        ):
+            assert actual.dtype == torch.get_default_dtype()
+            assert actual.requires_grad
+            assert actual.grad is not None
+            torch.testing.assert_close(actual.grad, expected.grad)
+
     @pytest.mark.parametrize("init_value", [-1.0, float("nan"), float("inf")])
     def test_rejects_invalid_threshold(self, init_value: float) -> None:
         with pytest.raises(ValueError, match="finite and non-negative"):
