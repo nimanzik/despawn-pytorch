@@ -6,13 +6,25 @@ import numpy as np
 import pytest
 import torch
 
-from despawn_pytorch.model import Despawn
+from despawn_pytorch import Despawn, DespawnLoss
 
 type ActiveConstraintLike = Literal["cqf", "per_layer", "per_filter", "free"]
 type LegacyConstraintLike = Literal["CQF", "PerLayer", "PerFilter", "Free"]
 
 
 class TestDespawn:
+    def test_changing_initializer_does_not_change_reconstruction(self) -> None:
+        initializer = np.array([0.2, -0.5, 0.7, 0.1], dtype=np.float32)
+        model = Despawn(kernel_init=initializer, n_levels=3, threshold_init=0.25)
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15)
+
+        with torch.no_grad():
+            reconstruction_before, _ = model(signal)
+            initializer += 1.0
+            reconstruction_after, _ = model(signal)
+
+        torch.testing.assert_close(reconstruction_after, reconstruction_before)
+
     @pytest.mark.parametrize(
         ("constraint", "expected_kernel_params"),
         [("cqf", 1), ("per_layer", 3), ("per_filter", 6), ("free", 12)],
@@ -43,6 +55,112 @@ class TestDespawn:
             torch.Size([2, 4]),
             torch.Size([2, 8]),
         ]
+
+    @pytest.mark.parametrize(
+        ("constraint", "expected_kernel_params"),
+        [("cqf", 1), ("per_layer", 3), ("per_filter", 6), ("free", 12)],
+    )
+    def test_array_and_list_initializers_train_identically(
+        self, constraint: ActiveConstraintLike, expected_kernel_params: int
+    ) -> None:
+        initializer = np.array([0.2, -0.5, 0.7, 0.1], dtype=np.float32)
+        initializer_before = initializer.copy()
+        models = [
+            Despawn(
+                kernel_init=kernel,
+                kernels_constraint=constraint,
+                n_levels=3,
+                threshold_init=0.25,
+            )
+            for kernel in (initializer, initializer.tolist())
+        ]
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15)
+
+        for model in models:
+            before = [parameter.detach().clone() for parameter in model.parameters()]
+            assert len(before) == expected_kernel_params + 8
+            optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+            reconstruction, penalty = model(signal)
+            DespawnLoss()(signal, reconstruction, penalty).backward()
+
+            for parameter in model.parameters():
+                assert parameter.grad is not None
+                assert torch.isfinite(parameter.grad).all()
+
+            optimizer.step()
+            for parameter, previous in zip(model.parameters(), before, strict=True):
+                assert not torch.equal(parameter, previous)
+
+        np.testing.assert_array_equal(initializer, initializer_before)
+        for (name, parameter), (reference_name, reference) in zip(
+            models[0].named_parameters(), models[1].named_parameters(), strict=True
+        ):
+            assert name == reference_name
+            torch.testing.assert_close(parameter, reference)
+
+    @pytest.mark.parametrize("constraint", ["cqf", "per_layer", "per_filter", "free"])
+    def test_updating_one_kernel_preserves_other_kernels_and_initializer(
+        self, constraint: ActiveConstraintLike
+    ) -> None:
+        initializer = np.array([0.2, -0.5, 0.7, 0.1], dtype=np.float32)
+        initializer_before = initializer.copy()
+        model = Despawn(
+            kernel_init=initializer, kernels_constraint=constraint, n_levels=3
+        )
+        kernels = [
+            parameter
+            for _, parameter in model.named_parameters()
+            if parameter.numel() == initializer.size
+        ]
+        before = [kernel.detach().clone() for kernel in kernels]
+
+        with torch.no_grad():
+            kernels[0].add_(1.0)
+
+        assert not torch.equal(kernels[0], before[0])
+        for kernel, previous in zip(kernels[1:], before[1:], strict=True):
+            torch.testing.assert_close(kernel, previous)
+        np.testing.assert_array_equal(initializer, initializer_before)
+
+    @pytest.mark.parametrize("constraint", ["cqf", "per_layer", "per_filter", "free"])
+    @pytest.mark.parametrize(
+        ("kernel_learnable", "threshold_learnable"),
+        [(False, True), (True, False), (False, False)],
+    )
+    def test_training_preserves_frozen_parameters(
+        self,
+        constraint: ActiveConstraintLike,
+        kernel_learnable: bool,
+        threshold_learnable: bool,
+    ) -> None:
+        model = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1],
+            kernels_constraint=constraint,
+            n_levels=3,
+            kernel_learnable=kernel_learnable,
+            threshold_init=0.25,
+            threshold_learnable=threshold_learnable,
+        )
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15).requires_grad_()
+        before = [parameter.detach().clone() for parameter in model.parameters()]
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        reconstruction, penalty = model(signal)
+        DespawnLoss()(signal, reconstruction, penalty).backward()
+
+        for parameter in model.parameters():
+            expected_learnable = (
+                kernel_learnable if parameter.numel() == 4 else threshold_learnable
+            )
+            assert parameter.requires_grad == expected_learnable
+            if expected_learnable:
+                assert parameter.grad is not None
+                assert torch.isfinite(parameter.grad).all()
+            else:
+                assert parameter.grad is None
+
+        optimizer.step()
+        for parameter, previous in zip(model.parameters(), before, strict=True):
+            assert torch.equal(parameter, previous) == (not parameter.requires_grad)
 
     @pytest.mark.parametrize("shape", [(15,), (2, 15), (2, 3, 15)])
     def test_time_last_shapes(self, shape: tuple[int, ...]) -> None:

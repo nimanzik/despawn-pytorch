@@ -62,7 +62,7 @@ def _create_kernel(
             )
         kernel = torch.empty(int(kernel_init), dtype=dtype).normal_(mean=0, std=0.05)
     else:
-        kernel = torch.as_tensor(kernel_init, dtype=dtype).flatten()
+        kernel = torch.as_tensor(kernel_init, dtype=dtype).flatten().clone()
     if kernel.numel() == 0:
         raise ValueError("kernel_init must contain at least one coefficient")
     return nn.Parameter(kernel.reshape(1, 1, -1, 1), requires_grad=learnable)
