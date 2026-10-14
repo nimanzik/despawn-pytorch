@@ -8,6 +8,16 @@ from despawn_pytorch import Despawn, DespawnLoss
 
 
 class TestDespawnLoss:
+    def test_rejects_mismatched_reconstruction_shapes(self) -> None:
+        target = torch.tensor([[[0.0, 0.0]], [[10.0, 10.0]]])
+        reconstruction = torch.tensor([[0.0, 0.0], [10.0, 10.0]])
+        coefficient_penalty = torch.zeros(2)
+
+        with pytest.raises(
+            ValueError, match=r"target.*\(2, 1, 2\).*reconstruction.*\(2, 2\)"
+        ):
+            DespawnLoss()(target, reconstruction, coefficient_penalty)
+
     def test_manual_calculation(self) -> None:
         """Check that the combined loss matches its manual calculation."""
         target = torch.tensor([1.0, -2.0, 3.0])
