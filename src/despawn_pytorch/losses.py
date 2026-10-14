@@ -42,6 +42,12 @@ class DespawnLoss(nn.Module):
         self, target: Tensor, reconstruction: Tensor, coefficient_penalty: Tensor
     ) -> Tensor:
         """Calculate the scalar training loss."""
+        if target.shape != reconstruction.shape:
+            raise ValueError(
+                "target and reconstruction must have the same shape, "
+                f"got target {tuple(target.shape)} and "
+                f"reconstruction {tuple(reconstruction.shape)}."
+            )
         reconstruction_loss = F.l1_loss(reconstruction, target)
         sparsity_loss = self.sparsity_weight * coefficient_penalty.mean()
         return reconstruction_loss + sparsity_loss
