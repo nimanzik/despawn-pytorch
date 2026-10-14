@@ -13,6 +13,24 @@ type LegacyConstraintLike = Literal["CQF", "PerLayer", "PerFilter", "Free"]
 
 
 class TestDespawn:
+    @pytest.mark.parametrize("threshold_init", [0, 1])
+    def test_integer_matches_float_threshold(self, threshold_init: int) -> None:
+        integer = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1], n_levels=3, threshold_init=threshold_init
+        )
+        floating = Despawn(
+            kernel_init=[0.2, -0.5, 0.7, 0.1],
+            n_levels=3,
+            threshold_init=float(threshold_init),
+        )
+        signal = torch.linspace(-2, 2, 30).reshape(2, 15)
+
+        reconstruction, penalty = integer(signal)
+        expected_reconstruction, expected_penalty = floating(signal)
+
+        torch.testing.assert_close(reconstruction, expected_reconstruction)
+        torch.testing.assert_close(penalty, expected_penalty)
+
     @pytest.mark.parametrize("constraint", ["cqf", "per_layer", "per_filter", "free"])
     def test_assign_zero_kernels(self, constraint: ActiveConstraintLike) -> None:
         # Loading zero kernels with assign=True zeroes all transform outputs.
