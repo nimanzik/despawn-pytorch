@@ -22,3 +22,9 @@ include = ["examples/**", "tests/**"]
 
 [overrides.rules]
 unresolved-import = "ignore"
+
+[[overrides]]
+include = ["src/**/layers.py", "src/**/losses.py", "src/**/model.py"]
+
+[overrides.rules]
+invalid-mutable-override = "ignore"
