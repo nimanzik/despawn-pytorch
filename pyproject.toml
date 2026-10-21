@@ -37,8 +37,8 @@ parity = [
     "tensorflow-cpu>=2.21.0",
 ]
 quality = [
-    "ruff>=0.16.0",
-    "ty>=0.0.65",
+    "ruff>=0.17.0",
+    "ty>=0.0.87",
 ]
 test = [
     "einops>=0.8.2",

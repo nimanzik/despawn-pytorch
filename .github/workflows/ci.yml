@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UV_VERSION: "0.12.2"
+  UV_VERSION: "latest"
   TORCH_CPU_VERSION: "torch==2.12.1+cpu"
 
 jobs:
