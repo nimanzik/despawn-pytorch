@@ -307,6 +307,18 @@ class TestDespawn:
         with pytest.raises(ValueError, match="kernels_constraint"):
             Despawn(kernels_constraint="unknown")  # ty: ignore[invalid-argument-type]
 
+    @pytest.mark.parametrize("n_levels", [True, False, 0, -1])
+    def test_rejects_invalid_level_count(self, n_levels: int) -> None:
+        with pytest.raises(ValueError, match="n_levels must be a positive integer"):
+            Despawn(n_levels=n_levels)
+
+    def test_numpy_integer_level_count(self) -> None:
+        model = Despawn(n_levels=np.int64(2))  # ty: ignore[invalid-argument-type]
+
+        assert type(model.n_levels) is int
+        assert model.n_levels == 2
+        assert len(model.ht_details) == 2
+
     def test_numpy_integer_kernel_size(self) -> None:
         model = Despawn(kernel_init=np.int64(8))
 
@@ -320,6 +332,11 @@ class TestDespawn:
     def test_rejects_invalid_kernel_size(self, kernel_size: int) -> None:
         with pytest.raises(ValueError, match="kernel size must be a positive integer"):
             Despawn(kernel_init=kernel_size)
+
+    @pytest.mark.parametrize("loss_coeff", ["l2", [1, 2], {}])
+    def test_rejects_invalid_loss_coeff(self, loss_coeff: object) -> None:
+        with pytest.raises(ValueError, match="loss_coeff must be 'l1' or None"):
+            Despawn(loss_coeff=loss_coeff)  # ty: ignore[invalid-argument-type]
 
     def test_loss_coeff_none_returns_one_zero_per_signal(self) -> None:
         model = Despawn(loss_coeff=None)
