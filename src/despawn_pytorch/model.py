@@ -178,8 +178,13 @@ class Despawn(nn.Module):
     ):
         super().__init__()
 
-        if not isinstance(n_levels, int) or n_levels < 1:
-            raise ValueError(f"level must be a positive integer, got {n_levels}.")
+        if (
+            isinstance(n_levels, bool)
+            or not isinstance(n_levels, Integral)
+            or n_levels < 1
+        ):
+            raise ValueError(f"n_levels must be a positive integer, got {n_levels}.")
+        n_levels = int(n_levels)
         self.n_levels = n_levels
 
         if loss_coeff is not None and loss_coeff != "l1":

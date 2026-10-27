@@ -307,6 +307,18 @@ class TestDespawn:
         with pytest.raises(ValueError, match="kernels_constraint"):
             Despawn(kernels_constraint="unknown")  # ty: ignore[invalid-argument-type]
 
+    @pytest.mark.parametrize("n_levels", [True, False, 0, -1])
+    def test_rejects_invalid_level_count(self, n_levels: int) -> None:
+        with pytest.raises(ValueError, match="n_levels must be a positive integer"):
+            Despawn(n_levels=n_levels)
+
+    def test_numpy_integer_level_count(self) -> None:
+        model = Despawn(n_levels=np.int64(2))  # ty: ignore[invalid-argument-type]
+
+        assert type(model.n_levels) is int
+        assert model.n_levels == 2
+        assert len(model.ht_details) == 2
+
     def test_numpy_integer_kernel_size(self) -> None:
         model = Despawn(kernel_init=np.int64(8))
 
