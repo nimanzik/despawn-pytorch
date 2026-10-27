@@ -200,60 +200,62 @@ class Despawn(nn.Module):
                 f"kernels_constraint must be one of {valid}, got {kernels_constraint}"
             ) from e
 
-        def get_kernel_list(n: int) -> list[nn.Parameter]:
+        def create_kernels(n: int) -> list[nn.Parameter]:
             """Create a list of `n` learnable convolution kernel parameters."""
             return [_create_kernel(kernel_init, kernel_learnable) for _ in range(n)]
 
         if constraint == _KernelsConstraint.CQF:
-            # Share one kernel across all levels and filter banks.
-            kern = _create_kernel(kernel_init, kernel_learnable)
-            self._kG = [0] * n_levels
-            self._kH = [0] * n_levels
-            self._kGT = self._kG
-            self._kHT = self._kH
-            self.kernel_store = nn.ParameterList([kern])
+            # Share one kernel across all levels and filter banks
+            kernel = _create_kernel(kernel_init, kernel_learnable)
+            self._analysis_idxs = [(0, 0)] * n_levels
+            # Synthesis is tied to analysis
+            self._synth_idxs = self._analysis_idxs
+            self.kernel_store = nn.ParameterList([kernel])
 
         elif constraint == _KernelsConstraint.PER_LAYER:
-            # Share one kernel across all filter banks at each level.
-            kerns = get_kernel_list(n_levels)
-            self._kG = list(range(n_levels))
-            self._kH = self._kG
-            self._kGT = self._kG
-            self._kHT = self._kH
-            self.kernel_store = nn.ParameterList(kerns)
+            # Share one kernel across all filter banks at each level
+            kernels = create_kernels(n_levels)
+            self._analysis_idxs = [(i, i) for i in range(n_levels)]
+            # Synthesis is tied to analysis
+            self._synth_idxs = self._analysis_idxs
+            self.kernel_store = nn.ParameterList(kernels)
 
         elif constraint == _KernelsConstraint.PER_FILTER:
-            # Use separate analysis kernels, with synthesis tied to analysis.
-            kerns_G = get_kernel_list(n_levels)
-            kerns_H = get_kernel_list(n_levels)
-            self._kG = list(range(n_levels))
-            self._kH = list(range(n_levels, 2 * n_levels))
-            self._kGT = self._kG  # synthesis G = analysis G
-            self._kHT = self._kH  # synthesis H = analysis H
-            self.kernel_store = nn.ParameterList(kerns_G + kerns_H)
-
-        elif constraint == _KernelsConstraint.FREE:
-            # Use independent kernels for every filter bank at every level.
-            kerns_G = get_kernel_list(n_levels)
-            kerns_H = get_kernel_list(n_levels)
-            kerns_GT = get_kernel_list(n_levels)
-            kerns_HT = get_kernel_list(n_levels)
-            self._kG = list(range(n_levels))
-            self._kH = list(range(n_levels, 2 * n_levels))
-            self._kGT = list(range(2 * n_levels, 3 * n_levels))
-            self._kHT = list(range(3 * n_levels, 4 * n_levels))
+            # Use separate analysis kernels, with synthesis tied to analysis
+            analysis_lp_kernels = create_kernels(n_levels)
+            analysis_hp_kernels = create_kernels(n_levels)
+            self._analysis_idxs = [(i, n_levels + i) for i in range(n_levels)]
+            # Synthesis is tied to analysis
+            self._synth_idxs = self._analysis_idxs
             self.kernel_store = nn.ParameterList(
-                kerns_G + kerns_H + kerns_GT + kerns_HT
+                analysis_lp_kernels + analysis_hp_kernels
             )
 
-        # Stateless filters are reused across levels.
+        elif constraint == _KernelsConstraint.FREE:
+            # Use independent kernels for every filter bank at every level
+            analysis_lp_kernels = create_kernels(n_levels)
+            analysis_hp_kernels = create_kernels(n_levels)
+            synth_lp_kernels = create_kernels(n_levels)
+            synth_hp_kernels = create_kernels(n_levels)
+            self._analysis_idxs = [(i, n_levels + i) for i in range(n_levels)]
+            self._synth_idxs = [
+                (2 * n_levels + i, 3 * n_levels + i) for i in range(n_levels)
+            ]
+            self.kernel_store = nn.ParameterList(
+                analysis_lp_kernels
+                + analysis_hp_kernels
+                + synth_lp_kernels
+                + synth_hp_kernels
+            )
+
+        # Stateless filters are reused across levels
         self.lp_wave = LowPassWave()
         self.hp_wave = HighPassWave()
         self.lp_trans = LowPassTrans()
         self.hp_trans = HighPassTrans()
 
         # Threshold detail coefficients at each level and the final
-        # approximation.
+        # approximation
         self.ht_details = nn.ModuleList(
             [
                 HardThreshold(init_value=threshold_init, learnable=threshold_learnable)
@@ -266,39 +268,53 @@ class Despawn(nn.Module):
 
     def _transform(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
         """Decompose, threshold, and reconstruct an internal input tensor."""
-        g = x
+        approximation = x
 
-        hl = []  # detail coefficients, finest to coarsest
-        inSizel = []  # shapes before downsampling, needed for reconstruction
+        # Detail coefficients, finest to coarsest
+        details = []
+
+        # Input shapes before downsampling, required for reconstruction
+        level_input_shapes = []
 
         # ----- Decomposition -----
-        for decomp_level in range(self.n_levels):
-            inSizel.append(g.shape)  # save shape before downsampling
+        for i_level in range(self.n_levels):
+            # Save shape before downsampling
+            level_input_shapes.append(approximation.shape)
 
-            kG = self.kernel_store[self._kG[decomp_level]]  # low-pass analysis kernel
-            kH = self.kernel_store[self._kH[decomp_level]]  # high-pass analysis kernel
+            # Analysis kernels: low pass, high pass
+            lp_index, hp_index = self._analysis_idxs[i_level]
+            analysis_lp_kernel = self.kernel_store[lp_index]
+            analysis_hp_kernel = self.kernel_store[hp_index]
 
             # Detail coefficients: high-pass filtered + hard-thresholded
-            h = self.ht_details[decomp_level](self.hp_wave(g, kH))
-            hl.append(h)
+            detail = self.ht_details[i_level](
+                self.hp_wave(approximation, analysis_hp_kernel)
+            )
+            details.append(detail)
 
             # Approximation: low-pass filtered (downsampled)
-            g = self.lp_wave(g, kG)
+            approximation = self.lp_wave(approximation, analysis_lp_kernel)
 
         # Hard-threshold the final approximation
-        g = self.ht_approx(g)
-        gint = g  # save for coefficient output / L1 loss
+        approximation = self.ht_approx(approximation)
+        # Seed the reconstruction accumulator with the thresholded approx
+        reconstruction = approximation
 
         # ----- Reconstruction -----
-        for recon_level in range(self.n_levels - 1, -1, -1):
-            kGT = self.kernel_store[self._kGT[recon_level]]
-            kHT = self.kernel_store[self._kHT[recon_level]]
+        for j_level in range(self.n_levels - 1, -1, -1):
+            lp_index, hp_index = self._synth_idxs[j_level]
+            synth_lp_kernel = self.kernel_store[lp_index]
+            synth_hp_kernel = self.kernel_store[hp_index]
 
-            h = self.hp_trans(hl[recon_level], kHT, inSizel[recon_level])
-            g = self.lp_trans(g, kGT, inSizel[recon_level])
-            g = g + h
+            detail_reconstruction = self.hp_trans(
+                details[j_level], synth_hp_kernel, level_input_shapes[j_level]
+            )
+            reconstruction = self.lp_trans(
+                reconstruction, synth_lp_kernel, level_input_shapes[j_level]
+            )
+            reconstruction = reconstruction + detail_reconstruction
 
-        return g, gint, hl
+        return reconstruction, approximation, details
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Reconstruct time series and calculate their sparsity penalties.
@@ -333,14 +349,16 @@ class Despawn(nn.Module):
         reconstruction, approximation, details = self._transform(internal)
 
         if self.loss_coeff is None:
-            coeff_loss = torch.zeros(internal.shape[0], device=x.device, dtype=x.dtype)
+            coefficient_penalty = torch.zeros(
+                internal.shape[0], device=x.device, dtype=x.dtype
+            )
         else:
-            all_coeffs = torch.cat([approximation] + details, dim=2)
-            coeff_loss = torch.mean(torch.abs(all_coeffs), dim=(1, 2, 3))
+            all_coefficients = torch.cat([approximation] + details, dim=2)
+            coefficient_penalty = torch.mean(torch.abs(all_coefficients), dim=(1, 2, 3))
 
         return (
             _restore_time_last(reconstruction, leading_shape),
-            coeff_loss.reshape(leading_shape),
+            coefficient_penalty.reshape(leading_shape),
         )
 
     def decompose(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
