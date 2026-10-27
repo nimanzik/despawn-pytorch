@@ -182,7 +182,7 @@ class Despawn(nn.Module):
             raise ValueError(f"level must be a positive integer, got {n_levels}.")
         self.n_levels = n_levels
 
-        if loss_coeff not in {"l1", None}:
+        if loss_coeff is not None and loss_coeff != "l1":
             raise ValueError(f"loss_coeff must be 'l1' or None, got {loss_coeff}.")
         self.loss_coeff = loss_coeff
 

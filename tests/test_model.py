@@ -321,6 +321,11 @@ class TestDespawn:
         with pytest.raises(ValueError, match="kernel size must be a positive integer"):
             Despawn(kernel_init=kernel_size)
 
+    @pytest.mark.parametrize("loss_coeff", ["l2", [1, 2], {}])
+    def test_rejects_invalid_loss_coeff(self, loss_coeff: object) -> None:
+        with pytest.raises(ValueError, match="loss_coeff must be 'l1' or None"):
+            Despawn(loss_coeff=loss_coeff)  # ty: ignore[invalid-argument-type]
+
     def test_loss_coeff_none_returns_one_zero_per_signal(self) -> None:
         model = Despawn(loss_coeff=None)
         _, coeff_loss = model(torch.randn(2, 3, 8))
