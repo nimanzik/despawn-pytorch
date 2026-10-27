@@ -266,11 +266,6 @@ class Despawn(nn.Module):
 
     def _transform(self, x: Tensor) -> tuple[Tensor, Tensor, list[Tensor]]:
         """Decompose, threshold, and reconstruct an internal input tensor."""
-        if x.shape[2] < 2**self.n_levels:
-            raise ValueError(
-                f"signal length must be at least 2**n_levels "
-                f"for n_levels={self.n_levels}, got {x.shape[2]}."
-            )
         g = x
 
         hl = []  # detail coefficients, finest to coarsest
@@ -332,8 +327,7 @@ class Despawn(nn.Module):
         Raises
         ------
         ValueError
-            If ``x`` is scalar, contains no signals, or has fewer than
-            ``2**n_levels`` samples along the time axis.
+            If ``x`` is scalar, has an empty time axis, or contains no signals.
         """
         internal, leading_shape = _prepare_input(x)
         reconstruction, approximation, details = self._transform(internal)
@@ -376,8 +370,7 @@ class Despawn(nn.Module):
         Raises
         ------
         ValueError
-            If ``x`` is scalar, contains no signals, or has fewer than
-            ``2**n_levels`` samples along the time axis.
+            If ``x`` is scalar, has an empty time axis, or contains no signals.
         """
         internal, leading_shape = _prepare_input(x)
         reconstruction, approximation, details = self._transform(internal)

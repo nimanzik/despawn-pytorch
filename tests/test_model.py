@@ -255,20 +255,11 @@ class TestDespawn:
             assert torch.equal(parameter, previous) == (not parameter.requires_grad)
 
     @pytest.mark.parametrize("method", ["forward", "decompose"])
-    @pytest.mark.parametrize("signal_length", [1, 7])
-    def test_rejects_signal_too_short_for_levels(
+    @pytest.mark.parametrize("signal_length", [1, 7, 8])
+    def test_accepts_signal_shorter_than_levels(
         self, method: str, signal_length: int
     ) -> None:
-        model = Despawn(n_levels=3)
-
-        with pytest.raises(ValueError, match="signal length.*n_levels"):
-            getattr(model, method)(torch.randn(2, signal_length))
-
-    @pytest.mark.parametrize("method", ["forward", "decompose"])
-    @pytest.mark.parametrize("signal_length", [8, 9])
-    def test_accepts_signal_long_enough_for_levels(
-        self, method: str, signal_length: int
-    ) -> None:
+        # Train-long, test-short is a supported workflow (monthly sunspots).
         model = Despawn(n_levels=3)
         signal = torch.randn(2, signal_length)
 

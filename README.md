@@ -196,7 +196,7 @@ Despawn(
 | `kernel_init`         | `8`           | A positive kernel length, or an array of initial kernel coefficients. Integer lengths use random normal initialisation. |
 | `kernel_learnable`    | `True`        | Whether training updates the filter kernels.                                                                            |
 | `kernels_constraint`  | `"per_layer"` | How kernels are shared. Accepted values are `"cqf"`, `"per_layer"`, `"per_filter"`, and `"free"`.                       |
-| `n_levels`            | `1`           | Number of wavelet decomposition levels. Signal length must be at least `2**n_levels`.                                   |
+| `n_levels`            | `1`           | Number of wavelet decomposition levels. Signals shorter than `2**n_levels` are accepted, but deep levels see mostly padding.|
 | `loss_coeff`          | `"l1"`        | Whether `forward` calculates the mean absolute coefficient penalty. Set it to `None` to return zeros.                   |
 | `threshold_init`      | `1.0`         | Initial magnitude of the positive and negative thresholds.                                                              |
 | `threshold_learnable` | `True`        | Whether training updates the thresholds.                                                                                |
