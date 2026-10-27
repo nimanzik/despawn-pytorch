@@ -254,6 +254,19 @@ class TestDespawn:
         for parameter, previous in zip(model.parameters(), before, strict=True):
             assert torch.equal(parameter, previous) == (not parameter.requires_grad)
 
+    @pytest.mark.parametrize("method", ["forward", "decompose"])
+    @pytest.mark.parametrize("signal_length", [1, 7, 8])
+    def test_accepts_signal_shorter_than_levels(
+        self, method: str, signal_length: int
+    ) -> None:
+        # Train-long, test-short is a supported workflow (monthly sunspots).
+        model = Despawn(n_levels=3)
+        signal = torch.randn(2, signal_length)
+
+        reconstruction, *_ = getattr(model, method)(signal)
+
+        assert reconstruction.shape == signal.shape
+
     @pytest.mark.parametrize("shape", [(15,), (2, 15), (2, 3, 15)])
     def test_time_last_shapes(self, shape: tuple[int, ...]) -> None:
         model = Despawn(

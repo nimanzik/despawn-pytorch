@@ -13,10 +13,10 @@ An unofficial PyTorch implementation of the Denoising Sparse Wavelet Network.
 > DeSpaWN PyTorch is an early release. Its public API may change as the
 > project develops.
 
-[//]: # (![Learnable Denoising Sparse Wavelet Network architecture]\(docs/assets/diagram.svg\))
+[//]: # "![Learnable Denoising Sparse Wavelet Network architecture](docs/assets/diagram.svg)"
 
 <p align="center">
-    <img src="docs/assets/diagram.svg" width="75%">
+    <img src="docs/assets/diagram.svg" width="75%" alt="DeSpaWN architecture">
 </p>
 
 DeSpaWN learns a sparse wavelet representation of raw signals without labels.
@@ -196,7 +196,7 @@ Despawn(
 | `kernel_init`         | `8`           | A positive kernel length, or an array of initial kernel coefficients. Integer lengths use random normal initialisation. |
 | `kernel_learnable`    | `True`        | Whether training updates the filter kernels.                                                                            |
 | `kernels_constraint`  | `"per_layer"` | How kernels are shared. Accepted values are `"cqf"`, `"per_layer"`, `"per_filter"`, and `"free"`.                       |
-| `n_levels`            | `1`           | Number of wavelet decomposition levels.                                                                                 |
+| `n_levels`            | `1`           | Number of wavelet decomposition levels. Signals shorter than `2**n_levels` are accepted; deep levels see padding.       |
 | `loss_coeff`          | `"l1"`        | Whether `forward` calculates the mean absolute coefficient penalty. Set it to `None` to return zeros.                   |
 | `threshold_init`      | `1.0`         | Initial magnitude of the positive and negative thresholds.                                                              |
 | `threshold_learnable` | `True`        | Whether training updates the thresholds.                                                                                |
